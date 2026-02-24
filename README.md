@@ -96,19 +96,18 @@ Justificativa: Armazenamento seguro e escalável de arquivos de áudio.
 
 # 👨‍💻 Organização das Tarefas
 
-## 👥 Desenvolvimento em Dupla
+## 👥 Desenvolvimento em individual
 
 ### 🔹 Integrante 1 – Backend
-- Modelagem do banco de dados  
-- Desenvolvimento da API  
-- Sistema de autenticação  
-- Integração com armazenamento  
-
-### 🔹 Integrante 2 – Frontend
 - Interface do usuário  
 - Player de música  
 - Tela de feed  
 - Sistema de playlists  
+
+- Modelagem do banco de dados  
+- Desenvolvimento da API  
+- Sistema de autenticação  
+- Integração com armazenamento  
 
 ---
 
