@@ -1,0 +1,11 @@
+{
+  "name": "neobeat-root",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently \"npm run dev --prefix neobeat-ia\" \"npm run start --prefix neobeat-back\""
+  },
+  "dependencies": {
+    "concurrently": "^9.2.1"
+  }
+}
