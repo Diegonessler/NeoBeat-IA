@@ -177,7 +177,7 @@ Responsabilidades do desenvolvimento:
 # 📦 Estrutura do Projeto
 
 frontend/
-backend/
+neobeat-ia/
 docs/
 README.md
 
