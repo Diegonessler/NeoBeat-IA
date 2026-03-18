@@ -6,6 +6,7 @@
     "dev": "concurrently \"npm run dev --prefix neobeat-ia\" \"npm run start --prefix neobeat-back\""
   },
   "dependencies": {
-    "concurrently": "^9.2.1"
+    "concurrently": "^9.2.1",
+    "react-router-dom": "^7.13.1"
   }
 }
