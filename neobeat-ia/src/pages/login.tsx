@@ -1,12 +1,10 @@
 import React, { useState } from "react";
 
-// 1. Adicione o goToHome aqui na interface
 interface LoginProps {
   goToRegister: () => void;
-  goToHome: () => void; 
+  goToHome: () => void;
 }
 
-// 2. Desestruture o goToHome aqui
 const Login: React.FC<LoginProps> = ({ goToRegister, goToHome }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -31,13 +29,15 @@ const Login: React.FC<LoginProps> = ({ goToRegister, goToHome }) => {
       if (!response.ok) {
         setErrorMessage(data.error || "Erro ao fazer login");
       } else {
+        // SALVA O TOKEN — isso faz as rotas protegidas funcionarem
+        if (data.session?.access_token) {
+          localStorage.setItem("neobeat_token", data.session.access_token);
+        }
+
         setSuccessMessage(data.message);
-        
-        // 3. Redireciona para a Home após o sucesso!
-        // Você pode colocar um pequeno delay se quiser que o usuário leia a mensagem de sucesso
         setTimeout(() => {
           goToHome();
-        }, 1000); 
+        }, 1000);
       }
 
       console.log("Login:", data);
