@@ -1,19 +1,27 @@
-// server.js
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
+const path = require("path");
+
 const app = express();
 
-// Middlewares
-app.use(cors());
-app.use(express.json());
+// MIDDLEWARES (Configuração obrigatória no topo)
+app.use(cors()); 
+app.use(express.json()); 
 
-// Rotas existentes
+// ARQUIVOS ESTÁTICOS (Permite tocar o .mp3 no navegador)
+// Certifique-se de que a pasta 'uploads' exista na raiz do seu backend
+app.use("/uploads", express.static(path.join(__dirname, "uploads"))); 
+
+// ROTAS DA API
 app.use("/auth", require("./routes/authRoutes"));
-
-// **Nova rota de músicas**
 app.use("/api/songs", require("./routes/songsRoutes"));
+app.use("/api/stats", require("./routes/statsRoutes"));
+app.use("/api/rankings", require("./routes/rankingRoutes"));
 
-// Porta
+// INICIALIZAÇÃO
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor NeoBeat rodando na porta ${PORT}`);
+  console.log(`📁 Músicas acessíveis em: http://localhost:${PORT}/uploads/`);
+});

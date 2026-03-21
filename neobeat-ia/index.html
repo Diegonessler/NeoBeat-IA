@@ -2,15 +2,37 @@
 <html lang="pt-br">
   <head>
     <meta charset="UTF-8" />
+    <!-- Ícone da aba (Favicon) - Garanta que o arquivo vite.svg existe na pasta public -->
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>NeoBeat IA</title>
+    
+    <!-- Título que aparece na aba do navegador -->
+    <title>NeoBeat IA - Seu Streaming de Música</title>
+
+    <!-- Fontes (Opcional: Exemplo de como importar fontes do Google se quiser) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com" rel="stylesheet" />
+
+    <style>
+      /* Reset básico para evitar espaços brancos indesejados */
+      body {
+        margin: 0;
+        padding: 0;
+        background-color: #000; /* Cor de fundo padrão enquanto o app carrega */
+        font-family: 'Inter', sans-serif;
+        color: white;
+        overflow-x: hidden;
+      }
+    </style>
   </head>
 
   <body>
-
+    <!-- O React vai injetar todo o sistema dentro desta div -->
     <div id="root"></div>
 
+    <!-- Script principal do projeto -->
     <script type="module" src="/src/main.tsx"></script>
-
   </body>
 </html>

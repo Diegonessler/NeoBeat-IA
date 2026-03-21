@@ -1,147 +1,136 @@
-/* LAYOUT 3 COLUNAS */
-.spotify-layout {
-  display: grid;
-  grid-template-columns: 240px 1fr 300px;
-  grid-template-rows: 1fr 90px;
-  height: 100vh;
-  width: 100vw;
+/* ============================================================
+   1. RESET E ESTRUTURA GLOBAL
+   ============================================================ */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Inter', sans-serif;
   background-color: #000;
   color: white;
   overflow: hidden;
 }
 
-/* BARRA SUPERIOR FIXA */
+.spotify-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr 300px;
+  grid-template-rows: 1fr 100px;
+  height: 100vh;
+  width: 100vw;
+}
+
+/* ============================================================
+   2. TOP BAR
+   ============================================================ */
 .top-bar {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 60px;
-  background-color: #121212;
-  display: grid;
-  grid-template-columns: 100px 1fr 100px; /* 🔥 divide certinho */
+  background-color: rgba(18,18,18,0.9);
+  backdrop-filter: blur(8px);
+  display: flex;
+  justify-content: space-between;
   align-items: center;
-  padding: 0 9px; 
+  padding: 0 20px;
   z-index: 1000;
   border-bottom: 1px solid #282828;
 }
-/* 🔥 NOVO: lado esquerdo */
+
 .top-bar-left {
   font-weight: bold;
-  min-width: 150px;
   color: #1db954;
+  font-size: 20px;
 }
 
-/* 🔥 NOVO: busca central */
 .top-bar-center {
+  flex: 1;
   display: flex;
   justify-content: center;
 }
 
 .top-bar-center input {
   width: 100%;
-  max-width: 200px; /* 🔥 aumenta aqui */
-  padding: 10px 18px;
+  max-width: 350px;
+  padding: 10px 20px;
   border-radius: 25px;
   border: none;
   background: #282828;
-  color: rgb(255, 0, 0);
-  font-size: 14px;
+  color: white;
+  transition: all 0.3s ease;
 }
 
-/* BOTÕES DIREITA */
+.top-bar-center input:focus {
+  outline: none;
+  background: #333;
+}
+
 .top-bar-right {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  margin-right: 20px; 
+  gap: 10px;
 }
-
 
 .top-bar-right button {
   background: #282828;
   border: none;
   color: white;
-  padding: 6px 14px;
-  font-size: 13px;
+  padding: 8px 16px;
   border-radius: 20px;
   cursor: pointer;
-  transition: 0.2s;
-  white-space: nowrap; /* 🔥 evita quebrar texto */
+  transition: all 0.3s ease;
 }
 
 .top-bar-right button:hover {
   background: #1db954;
+  color: black;
 }
 
-/* SIDEBAR ESQUERDA */
+/* ============================================================
+   3. SIDEBARS E MAIN
+   ============================================================ */
 .sidebar-left {
   background: #000;
   padding: 24px;
   margin-top: 60px;
+  border-right: 1px solid #121212;
 }
 
-/* CONTEÚDO CENTRAL */
-.main-content {
-  background: linear-gradient(to bottom, #1e1e1e, #121212 40%);
-  overflow-y: auto;
+.sidebar-right {
+  background: #000;
+  border-left: 1px solid #282828;
   padding: 20px;
   margin-top: 60px;
+  text-align: center;
 }
 
-/* HERO */
-.hero-banner {
-  margin: 20px 0;
+.main-content {
+  background: linear-gradient(to bottom, #1e1e1e, #121212);
+  overflow-y: auto;
+  padding: 20px 40px;
+  margin-top: 60px;
+  overflow-x: hidden;
 }
 
-/* SEÇÃO DE CARDS */
-.songs-row-container {
-  position: relative;
-  padding: 0 10px;
+/* ============================================================
+   4. CARDS
+   ============================================================ */
+.img-container {
+  width: 100%;
+  aspect-ratio: 1/1;
+  overflow: hidden;
+  border-radius: 8px;
 }
 
-/* SETAS */
-.nav-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 10;
-  background: rgba(18, 18, 18, 0.9);
-  border: none;
-  color: white;
-  border-radius: 50%;
-  width: 40px;
-  height: 40px;
-  cursor: pointer;
-  transition: 0.2s;
+.img-container img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
-.nav-arrow:hover {
-  background: rgba(40, 40, 40, 1);
-}
-
-.nav-arrow.right {
-  right: -5px;
-}
-
-.nav-arrow.left {
-  left: -5px;
-}
-
-/* SCROLL */
-.scroll-grid {
-  display: flex;
-  gap: 20px;
-  overflow-x: auto;
-  scrollbar-width: none;
-  scroll-behavior: smooth;
-}
-
-.scroll-grid::-webkit-scrollbar {
-  display: none;
-}
-
-/* CARD */
 .spotify-card {
   flex-shrink: 0;
   background: #181818;
@@ -150,82 +139,223 @@
   width: 180px;
   cursor: pointer;
   transition: all 0.3s ease;
+  box-shadow: 0 0 8px rgba(0,0,0,0.6);
 }
 
 .spotify-card:hover {
-  background: #222;
+  background: #282828;
   transform: translateY(-5px);
+  box-shadow: 0 0 12px #00d2ff;
 }
 
-/* CONTAINER IMAGEM */
-.img-container {
-  width: 100%;
-  height: 180px;
-  overflow: hidden;
-  border-radius: 8px;
+/* ============================================================
+   5. SCROLL HORIZONTAL
+   ============================================================ */
+.songs-row-container {
   position: relative;
-}
-
-/* 🔥 IMAGEM AJUSTADA (resolve teu bug) */
-.img-container img {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
+  margin-bottom: 40px;
 }
 
-/* TEXTO DO CARD */
-.card-info {
-  margin-top: 10px;
+.scroll-grid {
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
-.card-info strong {
-  font-size: 14px;
+.scroll-grid::-webkit-scrollbar {
+  display: none;
 }
 
-.card-info p {
-  font-size: 12px;
-  color: #b3b3b3;
-  margin: 4px 0 0;
-}
-
-/* BADGE */
-.badge-number {
+/* ============================================================
+   6. SETAS
+   ============================================================ */
+.nav-arrow {
   position: absolute;
-  bottom: 8px;
-  right: 8px;
-  background: #00F0FF;
-  color: black;
-  font-weight: bold;
-  padding: 4px 8px;
-  font-size: 12px;
-  border-radius: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 100;
+  background: rgba(0,0,0,0.7);
+  color: white;
+  border: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.3s ease;
 }
 
-/* SIDEBAR DIREITA */
-.sidebar-right {
-  background-color: #000;
-  border-left: 1px solid #282828;
-  padding: 20px;
-  margin-top: 60px;
+.nav-arrow.left {
+  left: 0;
 }
 
-.current-art {
+.nav-arrow.right {
+  right: 0;
+}
+
+.nav-arrow:hover {
+  background: linear-gradient(135deg, #6200ff, #00d2ff);
+  box-shadow: 0 0 10px #00d2ff;
+}
+
+/* ============================================================
+   7. PLAYER BAR
+   ============================================================ */
+.player-bar-spotify {
+  position: fixed;
+  bottom: 0;
   width: 100%;
-  border-radius: 8px;
-}
-
-/* PLAYER */
-.player-bar {
-  grid-column: 1 / 4;
-  background-color: #181818;
+  height: 100px;
+  background: rgba(5,5,5,0.95);
+  backdrop-filter: blur(6px);
+  border-top: 2px solid #6200ff;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 24px;
-  border-top: 1px solid #282828;
+  padding: 0 30px;
 }
 
-.player-bar audio {
-  width: 300px;
+/* INFO */
+.player-info {
+  width: 25%;
+}
+
+/* CONTROLES */
+.player-controls-spotify {
+  width: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.control-buttons {
+  display: flex;
+  gap: 20px;
+}
+
+/* BOTÕES */
+.btn-icon {
+  background: none;
+  border: none;
+  color: #b3b3b3;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-icon:hover {
+  color: #00d2ff;
+}
+
+.btn-main-play {
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #6200ff, #00d2ff);
+  border: none;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-main-play:hover {
+  transform: scale(1.1);
+  box-shadow: 0 0 12px #00d2ff;
+}
+
+/* ============================================================
+   8. BARRA DE PROGRESSO
+   ============================================================ */
+.progress-container-wrapper {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.progress-bg {
+  flex: 1;
+  height: 4px;
+  background: #4d4d4d;
+  border-radius: 2px;
+  position: relative;
+}
+
+.progress-fill {
+  height: 100%;
+  background: #00d2ff;
+  border-radius: 2px;
+}
+
+.progress-slider {
+  position: absolute;
+  top: -5px;
+  width: 100%;
+  height: 15px;
+  opacity: 0;
+  cursor: pointer;
+}
+
+/* ============================================================
+   9. LADO DIREITO (VOLUME + LIKE)
+   ============================================================ */
+.player-right {
+  width: 25%;
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 15px;
+}
+
+.btn-heart {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-heart:hover {
+  color: #ff0055;
+}
+
+.volume-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.volume-slider input[type="range"] {
+  appearance: none;          /* ✅ padrão */
+  -webkit-appearance: none;  /* ✅ compatibilidade com WebKit */
+  width: 80px;
+  height: 4px;
+  background: #4d4d4d;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+
+.volume-slider input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #00d2ff;
+  cursor: pointer;
+}
+
+/* ============================================================
+   10. RESPONSIVIDADE
+   ============================================================ */
+@media (max-width: 768px) {
+  .spotify-layout {
+    grid-template-columns: 200px 1fr;
+  }
+  .sidebar-right {
+    display: none;
+  }
+  .top-bar-center input {
+    max-width: 250px;
+  }
 }
