@@ -266,7 +266,7 @@ const Home: React.FC = () => {
   };
 
   /* ============================================================
-     10. REMOVER MÚSICA DA PLAYLIST  ← NOVO
+     10. REMOVER MÚSICA DA PLAYLIST
      ============================================================ */
   const handleRemoveSongFromPlaylist = async (song: Song) => {
     if (!activePlaylist) return;
@@ -276,7 +276,6 @@ const Home: React.FC = () => {
         headers: getAuthHeaders(),
       });
       if (res.ok) {
-        // Remove da lista local sem precisar recarregar
         setActivePlaylistSongs((prev) => prev.filter((s) => s.id !== song.id));
         showFeedback("Música removida da playlist.");
       } else {
@@ -492,7 +491,6 @@ const Home: React.FC = () => {
                       <td className="song-artist-cell" onClick={() => handlePlay(song)}>
                         {song.artist}
                       </td>
-                      {/* BOTÃO REMOVER */}
                       <td className="song-remove-cell">
                         <button
                           className="btn-remove-song"
@@ -515,38 +513,41 @@ const Home: React.FC = () => {
           <div className="songs-row-container">
             <h2>{search ? "Resultados" : "As Mais Ouvidas"}</h2>
 
-            <button className="nav-arrow left" onClick={() => scrollRow("left")}>◀</button>
-            <button className="nav-arrow right" onClick={() => scrollRow("right")}>▶</button>
+            {/* wrapper para centralizar setas em relação aos cards */}
+            <div className="scroll-wrapper">
+              <button className="nav-arrow left" onClick={() => scrollRow("left")}>◀</button>
+              <button className="nav-arrow right" onClick={() => scrollRow("right")}>▶</button>
 
-            {isLoading && <p style={{ color: "#b3b3b3", padding: "20px 0" }}>Carregando músicas...</p>}
+              {isLoading && <p style={{ color: "#b3b3b3", padding: "20px 0" }}>Carregando músicas...</p>}
 
-            {!isLoading && displayList.length === 0 && (
-              <p style={{ color: "#b3b3b3", padding: "20px 0" }}>
-                {search ? "Nenhuma música encontrada." : "Nenhuma música disponível."}
-              </p>
-            )}
+              {!isLoading && displayList.length === 0 && (
+                <p style={{ color: "#b3b3b3", padding: "20px 0" }}>
+                  {search ? "Nenhuma música encontrada." : "Nenhuma música disponível."}
+                </p>
+              )}
 
-            <div className="scroll-grid" ref={scrollRef}>
-              {displayList.map((song) => (
-                <div
-                  key={song.id}
-                  className={`spotify-card${currentSong?.id === song.id ? " playing" : ""}`}
-                  onClick={() => handlePlay(song)}
-                >
-                  <div className="img-container">
-                    <img src={formatUrl(song.cover_url)} alt={song.title} />
-                    <button
-                      className="btn-add-to-playlist"
-                      onClick={(e) => { e.stopPropagation(); setShowAddToPlaylist(song.id); }}
-                      title="Adicionar à playlist"
-                    >+</button>
+              <div className="scroll-grid" ref={scrollRef}>
+                {displayList.map((song) => (
+                  <div
+                    key={song.id}
+                    className={`spotify-card${currentSong?.id === song.id ? " playing" : ""}`}
+                    onClick={() => handlePlay(song)}
+                  >
+                    <div className="img-container">
+                      <img src={formatUrl(song.cover_url)} alt={song.title} />
+                      <button
+                        className="btn-add-to-playlist"
+                        onClick={(e) => { e.stopPropagation(); setShowAddToPlaylist(song.id); }}
+                        title="Adicionar à playlist"
+                      >+</button>
+                    </div>
+                    <div className="card-info">
+                      <strong>{song.title}</strong>
+                      <p>{song.artist}</p>
+                    </div>
                   </div>
-                  <div className="card-info">
-                    <strong>{song.title}</strong>
-                    <p>{song.artist}</p>
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -584,7 +585,13 @@ const Home: React.FC = () => {
               <button className="btn-icon" onClick={() => setIsShuffle(!isShuffle)}
                 style={{ color: isShuffle ? "#00d2ff" : undefined }} title="Aleatório">🔀</button>
               <button className="btn-icon" onClick={playPrev} title="Anterior">⏮</button>
-              <button className="btn-main-play" onClick={togglePlay}>{isPlaying ? "⏸" : "▶"}</button>
+              <button
+                className="btn-main-play"
+                onClick={togglePlay}
+                style={{ paddingLeft: isPlaying ? '0' : '3px' }}
+              >
+                {isPlaying ? "⏸" : "▶"}
+              </button>
               <button className="btn-icon" onClick={playNext} title="Próxima">⏭</button>
               <button className="btn-icon" onClick={() => setIsRepeat(!isRepeat)}
                 style={{ color: isRepeat ? "#00d2ff" : undefined }} title="Repetir">🔁</button>
