@@ -139,7 +139,7 @@ Os diagramas apresentados são:
 * **Diagrama de Containers**
 * **Diagrama de Componentes**
 
-![Diagramas C4](./docs/diagrama.png)
+![Diagramas C4](./docs/diagrama.svg)
 
 ---
 
