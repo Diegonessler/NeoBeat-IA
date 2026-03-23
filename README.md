@@ -199,24 +199,24 @@ Este projeto tem como objetivo aplicar conceitos estudados nas disciplinas de:
 🚧 Em desenvolvimento ativo
 
 
-#✅ Etapas concluídas
-Estrutura inicial do projeto definida (Frontend + Backend)
-Interface principal desenvolvida em React
-Player de música funcional
-Layout inspirado em plataformas de streaming
-Componentização da interface
-Estrutura de navegação básica implementada
+# ✅ Etapas concluídas
+* Estrutura inicial do projeto definida (Frontend + Backend)
+* Interface principal desenvolvida em React
+* Player de música funcional
+* Layout inspirado em plataformas de streaming
+* Componentização da interface
+* Estrutura de navegação básica implementada
 
 # 🔄 Em desenvolvimento
-Integração completa com backend (API REST)
-Sistema de autenticação (JWT)
-Modelagem e integração com banco de dados (PostgreSQL)
-Funcionalidades sociais (curtir, seguir, playlists)
-Sistema de upload e gerenciamento de músicas
+* Integração completa com backend (API REST)
+* Sistema de autenticação (JWT)
+* Modelagem e integração com banco de dados (PostgreSQL)
+* Funcionalidades sociais (curtir, seguir, playlists)
+* Sistema de upload e gerenciamento de músicas
 
 # ⏳ Próximas etapas
-Implementação do sistema de ranking
-Feed personalizado
-Sistema de busca avançada
-Otimização de performance
-Deploy da aplicação
+* Implementação do sistema de ranking
+* Feed personalizado
+* Sistema de busca avançada
+* Otimização de performance
+* Deploy da aplicação
