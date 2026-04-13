@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "cd ../neobeat-ia && npm install && npm run build",
     "start": "node server.js"
   },
   "keywords": [],
