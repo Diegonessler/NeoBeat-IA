@@ -208,6 +208,13 @@ const Home: React.FC = () => {
     setProgress(0);
     setCurrentTime("0:00");
     setDuration("0:00");
+    setTimeout(() => {
+      if (audioRef.current) {
+      audioRef.current.play();
+      setIsPlaying(true);
+      }
+      }, 0);
+
     try {
       await fetch("/api/stats/play", {
         method: "POST",
