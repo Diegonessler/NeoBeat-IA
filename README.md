@@ -139,7 +139,10 @@ Os diagramas apresentados são:
 * **Diagrama de Containers**
 * **Diagrama de Componentes**
 
-![Diagramas C4](./docs/diagrama.svg)
+![Diagramas C4](./docs/neobeat_c1_context.svg)
+![Diagramas C4](./docs/neobeat_c2_containers.svg)
+![Diagramas C4](./docs/neobeat_c3_components.svg)
+![Diagramas C4](./docs/neobeat_c4_code.svg)
 
 ---
 
