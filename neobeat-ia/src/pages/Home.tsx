@@ -11,6 +11,12 @@ interface Song {
   genre: string;
   cover_url: string;
   audio_url: string;
+
+  // extras
+  lyrics?: string;
+  like_count?: number;
+  comment_count?: number;
+  play_count?: number; 
 }
 
 interface Playlist {
@@ -50,7 +56,7 @@ const Home: React.FC = () => {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
-  /* ---- Refs ---- */
+  /* ---- Refs de áudio e UI ---- */
   const scrollRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -79,6 +85,39 @@ const Home: React.FC = () => {
   const [loadingPlaylistSongs, setLoadingPlaylistSongs] = useState(false);
 
   /* ============================================================
+     REFS para evitar closure stale nos callbacks do player
+     ============================================================ */
+  const activePlaylistRef = useRef(activePlaylist);
+  const activePlaylistSongsRef = useRef(activePlaylistSongs);
+  const currentSongRef = useRef(currentSong);
+  const isShuffleRef = useRef(isShuffle);
+  const isRepeatRef = useRef(isRepeat);
+  const songsRef = useRef(songs);
+  const topSongsRef = useRef(topSongs);
+  const filteredSongsRef = useRef(filteredSongs);
+  const searchRef = useRef(search);
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [isLiking, setIsLiking] = useState(false);
+
+
+
+
+
+
+
+  useEffect(() => { activePlaylistRef.current = activePlaylist; }, [activePlaylist]);
+  useEffect(() => { activePlaylistSongsRef.current = activePlaylistSongs; }, [activePlaylistSongs]);
+  useEffect(() => { currentSongRef.current = currentSong; }, [currentSong]);
+  useEffect(() => { isShuffleRef.current = isShuffle; }, [isShuffle]);
+  useEffect(() => { isRepeatRef.current = isRepeat; }, [isRepeat]);
+  useEffect(() => { songsRef.current = songs; }, [songs]);
+  useEffect(() => { topSongsRef.current = topSongs; }, [topSongs]);
+  useEffect(() => { filteredSongsRef.current = filteredSongs; }, [filteredSongs]);
+  useEffect(() => { searchRef.current = search; }, [search]);
+
+  /* ============================================================
      4. FUNÇÕES AUXILIARES
      ============================================================ */
   const formatTime = (time: number) => {
@@ -98,6 +137,13 @@ const Home: React.FC = () => {
     if (search) return filteredSongs;
     if (topSongs.length > 0) return topSongs;
     return songs;
+  };
+
+  /* Versão via refs — segura para usar dentro de callbacks */
+  const getDisplayListRef = () => {
+    if (searchRef.current) return filteredSongsRef.current;
+    if (topSongsRef.current.length > 0) return topSongsRef.current;
+    return songsRef.current;
   };
 
   const showFeedback = (msg: string) => {
@@ -147,23 +193,36 @@ const Home: React.FC = () => {
     if (audioRef.current) audioRef.current.volume = value;
   };
 
+  /* ============================================================
+     playNext / playPrev / handleEnded — usam refs para evitar
+     closure stale (valores "congelados" do momento do registro)
+     ============================================================ */
   const playNext = () => {
-    const list = activePlaylist ? activePlaylistSongs : getDisplayList();
-    if (!currentSong || list.length === 0) return;
-    if (isShuffle) { handlePlay(list[Math.floor(Math.random() * list.length)]); return; }
-    const idx = list.findIndex((s) => s.id === currentSong.id);
+    const list = activePlaylistRef.current
+      ? activePlaylistSongsRef.current
+      : getDisplayListRef();
+    const song = currentSongRef.current;
+    if (!song || list.length === 0) return;
+    if (isShuffleRef.current) {
+      handlePlay(list[Math.floor(Math.random() * list.length)]);
+      return;
+    }
+    const idx = list.findIndex((s) => s.id === song.id);
     handlePlay(list[(idx + 1) % list.length]);
   };
 
   const playPrev = () => {
-    const list = activePlaylist ? activePlaylistSongs : getDisplayList();
-    if (!currentSong || list.length === 0) return;
-    const idx = list.findIndex((s) => s.id === currentSong.id);
+    const list = activePlaylistRef.current
+      ? activePlaylistSongsRef.current
+      : getDisplayListRef();
+    const song = currentSongRef.current;
+    if (!song || list.length === 0) return;
+    const idx = list.findIndex((s) => s.id === song.id);
     handlePlay(list[(idx - 1 + list.length) % list.length]);
   };
 
   const handleEnded = () => {
-    if (isRepeat && audioRef.current) {
+    if (isRepeatRef.current && audioRef.current) {
       audioRef.current.currentTime = 0;
       audioRef.current.play();
     } else {
@@ -203,28 +262,60 @@ const Home: React.FC = () => {
      7. TOCAR MÚSICA
      ============================================================ */
   const handlePlay = async (song: Song) => {
-    setCurrentSong(song);
-    setIsPlaying(false);
-    setProgress(0);
-    setCurrentTime("0:00");
-    setDuration("0:00");
-    setTimeout(() => {
-      if (audioRef.current) {
+  setCurrentSong(song);
+  setIsPlaying(true);
+  setProgress(0);
+  setCurrentTime("0:00");
+  setDuration("0:00");
+
+  // Dá play no áudio
+  setTimeout(() => {
+    if (audioRef.current) {
       audioRef.current.play();
       setIsPlaying(true);
-      }
-      }, 0);
-
-    try {
-      await fetch("/api/stats/play", {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ song_id: song.id }),
-      });
-    } catch (err) {
-      console.error("Erro ao registrar play:", err);
     }
-  };
+  }, 0);
+
+  try {
+    // Busca dados em paralelo
+    const [lyricsRes, likesRes, commentsRes, playsRes] = await Promise.all([
+      fetch(`/api/songs/${song.id}/lyrics`),
+      fetch(`/api/songs/${song.id}/likes`),
+      fetch(`/api/songs/${song.id}/comments`),
+      fetch(`/api/songs/${song.id}/plays`), 
+]);
+
+    const [lyricsData, likesData, commentsData, playsData] = await Promise.all([
+  lyricsRes.json(),
+  likesRes.json(),
+  commentsRes.json(),
+  playsRes.json(), // 
+]);
+
+    // Atualiza música com dados extras
+      setCurrentSong(prev =>
+    prev
+      ? {
+          ...prev,
+          lyrics: lyricsData.lyrics,
+          like_count: likesData.count,
+          comment_count: commentsData.length,
+          play_count: playsData.count, // 👈 AGORA FUNCIONA
+        }
+      : null
+  );
+
+    // Registra play
+    await fetch("/api/stats/play", {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ song_id: song.id }),
+    });
+
+  } catch (err) {
+    console.error("Erro no handlePlay:", err);
+  }
+};
 
   /* ============================================================
      8. ABRIR PLAYLIST
@@ -369,7 +460,127 @@ const Home: React.FC = () => {
   };
 
   /* ============================================================
-     13. RENDER
+     13. comentários (modal)
+     ============================================================ */
+  const loadComments = async (songId: number) => {
+  try {
+    const res = await fetch(`/api/songs/${songId}/comments`);
+    const data = await res.json();
+    setComments(data || []);
+  } catch (err) {
+    console.error("Erro ao carregar comentários:", err);
+  }
+};
+
+  const openCommentsModal = async () => {
+    if (!currentSong) return;
+    await loadComments(currentSong.id);
+    setShowCommentsModal(true);
+  };
+
+  const handleSendComment = async () => {
+  if (!currentSong || !newComment.trim()) return;
+
+  try {
+    const res = await fetch(`/api/songs/${currentSong.id}/comments`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify({ content: newComment.trim() }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error(data);
+      showFeedback(data.error || "Erro ao comentar");
+      return;
+    }
+
+    setNewComment("");
+    await loadComments(currentSong.id);
+
+    setCurrentSong((prev) =>
+      prev
+        ? {
+            ...prev,
+            comment_count: (prev.comment_count ?? 0) + 1,
+          }
+        : null
+    );
+  } catch (err) {
+    console.error("Erro ao comentar:", err);
+  }
+};
+
+/* ============================================================
+     14. curtir música
+=============================================================== */
+
+
+
+  const handleLikeSong = async () => {
+    if (!currentSong || isLiking) return;
+
+    try {
+      setIsLiking(true);
+
+      const res = await fetch(`/api/songs/${currentSong.id}/like`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        showFeedback(data.error || "Erro ao curtir música");
+        return;
+      }
+
+      setCurrentSong((prev) =>
+        prev
+          ? {
+              ...prev,
+              like_count: data.liked
+                ? (prev.like_count ?? 0) + 1
+                : Math.max((prev.like_count ?? 0) - 1, 0),
+            }
+          : null
+      );
+    } catch (err) {
+      console.error("Erro ao curtir música:", err);
+    } finally {
+      setIsLiking(false);
+    }
+  };
+
+/* ============================================================
+     15. download música
+     ============================================================ */
+
+  const handleDownloadSong = async () => {
+    if (!currentSong) return;
+
+    try {
+      const audioUrl = formatUrl(currentSong.audio_url);
+      const response = await fetch(audioUrl);
+      const blob = await response.blob();
+
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${currentSong.title} - ${currentSong.artist}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Erro ao baixar música:", err);
+      showFeedback("Erro ao baixar música.");
+    }
+  };
+
+  /* ============================================================
+     16. RENDER
      ============================================================ */
   const displayList = getDisplayList();
 
@@ -520,7 +731,6 @@ const Home: React.FC = () => {
           <div className="songs-row-container">
             <h2>{search ? "Resultados" : "As Mais Ouvidas"}</h2>
 
-            {/* wrapper para centralizar setas em relação aos cards */}
             <div className="scroll-wrapper">
               <button className="nav-arrow left" onClick={() => scrollRow("left")}>◀</button>
               <button className="nav-arrow right" onClick={() => scrollRow("right")}>▶</button>
@@ -562,15 +772,53 @@ const Home: React.FC = () => {
 
       {/* SIDEBAR DIREITA */}
       <aside className="sidebar-right">
-        {currentSong && (
-          <>
-            <img src={formatUrl(currentSong.cover_url)} className="current-art" alt={currentSong.title} />
-            <h3>{currentSong.title}</h3>
-            <p>{currentSong.artist}</p>
-            <p style={{ color: "#b3b3b3", fontSize: "13px", marginTop: "4px" }}>{currentSong.genre}</p>
-          </>
-        )}
-      </aside>
+  {currentSong && (
+    <div className="song-details">
+
+      {/* IMAGEM */}
+      <img
+        src={formatUrl(currentSong.cover_url)}
+        className="current-art"
+        alt={currentSong.title}
+      />
+
+      {/* CONTROLES */}
+     <div className="song-actions">
+  <button className="action-pill">
+    ▶ {currentSong.play_count ?? 0}
+  </button>
+
+  <button className="action-pill" onClick={handleLikeSong}>
+    👍 {currentSong.like_count ?? 0}
+  </button>
+
+  <button className="action-pill" onClick={openCommentsModal}>
+    💬 {currentSong.comment_count ?? 0}
+  </button>
+
+  <button className="action-pill" onClick={handleDownloadSong}>
+    ⬇
+  </button>
+</div>
+
+      {/* INFO */}
+      <h2>{currentSong.title}</h2>
+      <p>{currentSong.artist}</p>
+
+      <p style={{ color: "#aaa" }}>
+        {currentSong.genre}
+      </p>
+
+      {/* LETRA */}
+      {currentSong.lyrics && (
+        <div className="lyrics-box">
+          <pre>{currentSong.lyrics}</pre>
+        </div>
+      )}
+
+    </div>
+  )}
+</aside>
 
       {/* PLAYER */}
       {currentSong && (
@@ -579,6 +827,7 @@ const Home: React.FC = () => {
             ref={audioRef}
             key={currentSong.id}
             src={formatUrl(currentSong.audio_url)}
+            autoPlay      
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={onLoadedMetadata}
             onEnded={handleEnded}
@@ -682,9 +931,39 @@ const Home: React.FC = () => {
           </div>
         </div>
       )}
+{showCommentsModal && (
+      <div className="modal-overlay" onClick={() => setShowCommentsModal(false)}>
+        <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+          <h3>Comentários</h3>
 
+          {comments.length === 0 ? (
+            <p>Nenhum comentário ainda.</p>
+          ) : (
+            comments.map((c) => (
+              <div key={c.id}>
+                <p>{c.content}</p>
+              </div>
+            ))
+          )}
+
+          <input
+            value={newComment}
+            onChange={(e) => setNewComment(e.target.value)}
+            placeholder="Comentar..."
+          />
+
+          <button onClick={handleSendComment}>Enviar</button>
+
+          <button onClick={() => setShowCommentsModal(false)}>
+            Fechar
+          </button>
+        </div>
+      </div>
+    )}
     </div>
   );
 };
+
+
 
 export default Home;

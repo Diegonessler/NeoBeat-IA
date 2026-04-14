@@ -3,10 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
+    "start": "concurrently \"npm run dev --prefix neobeat-ia\" \"npm run start --prefix neobeat-back\"",
     "dev": "concurrently \"npm run dev --prefix neobeat-ia\" \"npm run start --prefix neobeat-back\"",
-    "install-all": "npm install && cd neobeat-ia && npm install && cd ../neobeat-back && npm install",
-    "build": "cd neobeat-ia && npm install && npm run build && cd ../neobeat-back && npm install",
-    "start": "cd neobeat-back && node server.js"
+    "install-all": "npm install && cd neobeat-ia && npm install && cd ../neobeat-back && npm install"
   },
   "dependencies": {
     "concurrently": "^9.2.1",

@@ -887,4 +887,37 @@ body {
 .btn-remove-song:hover {
   color: #e53935;
 }
- 
+
+.song-details {
+  padding: 10px;
+}
+
+.song-actions {
+  display: flex;
+  justify-content: space-between;
+  margin: 10px 0;
+  color: #ccc;
+}
+
+.song-actions div {
+  background: #1e1e1e;
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 14px;
+}
+
+.lyrics-box {
+  margin-top: 15px;
+  max-height: 200px;
+  overflow-y: auto;
+  background: #111;
+  padding: 10px;
+  border-radius: 10px;
+  font-size: 13px;
+  color: #ddd;
+}
+
+.lyrics-box pre {
+  white-space: pre-wrap;
+  font-family: inherit;
+}
