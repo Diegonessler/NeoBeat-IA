@@ -179,7 +179,7 @@ Responsabilidades do desenvolvimento:
 
 # 📦 Estrutura do Projeto
 
-frontend/
+neobeat-back/
 neobeat-ia/
 docs/
 README.md
@@ -209,13 +209,16 @@ Este projeto tem como objetivo aplicar conceitos estudados nas disciplinas de:
 * Layout inspirado em plataformas de streaming
 * Componentização da interface
 * Estrutura de navegação básica implementada
+* playlist e criação de playlist funcional
+* sistema de downloads de musica funcional
+* 
 
 # 🔄 Em desenvolvimento
 * Integração completa com backend (API REST)
 * Sistema de autenticação (JWT)
 * Modelagem e integração com banco de dados (PostgreSQL)
-* Funcionalidades sociais (curtir, seguir, playlists)
-* Sistema de upload e gerenciamento de músicas
+* Funcionalidades sociais (curtir, seguir, adicionar comentario)
+
 
 # ⏳ Próximas etapas
 * Implementação do sistema de ranking
