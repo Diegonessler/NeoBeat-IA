@@ -39,6 +39,7 @@ Desenvolver uma plataforma web onde:
 * Criadores de música utilizando IA
 * Entusiastas de tecnologia
 * Usuários interessados em novas experiências musicais
+* Usuarios que queiram Musica sem direito autorais
 
 ---
 
