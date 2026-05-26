@@ -16,12 +16,10 @@ const Login: React.FC<LoginProps> = ({ goToRegister, goToHome }) => {
       setErrorMessage(null);
       setSuccessMessage(null);
 
-      const response = await fetch("http://localhost:3000/auth/login", {
+      const response = await fetch("/auth/login", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({ email, password })
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password }),
       });
 
       const data = await response.json();
@@ -29,18 +27,13 @@ const Login: React.FC<LoginProps> = ({ goToRegister, goToHome }) => {
       if (!response.ok) {
         setErrorMessage(data.error || "Erro ao fazer login");
       } else {
-        // SALVA O TOKEN — isso faz as rotas protegidas funcionarem
         if (data.session?.access_token) {
           localStorage.setItem("neobeat_token", data.session.access_token);
+          localStorage.setItem("neobeat_refresh_token", data.session.refresh_token);
         }
-
         setSuccessMessage(data.message);
-        setTimeout(() => {
-          goToHome();
-        }, 1000);
+        setTimeout(() => goToHome(), 1000);
       }
-
-      console.log("Login:", data);
     } catch (error) {
       console.error("Erro no login", error);
       setErrorMessage("Erro inesperado. Tente novamente.");
@@ -67,12 +60,12 @@ const Login: React.FC<LoginProps> = ({ goToRegister, goToHome }) => {
         placeholder="••••••••"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && handleLogin()}
       />
 
       <button className="login-btn" onClick={handleLogin}>
         Acessar
       </button>
-
       <button className="register-btn" onClick={goToRegister}>
         Cadastrar
       </button>

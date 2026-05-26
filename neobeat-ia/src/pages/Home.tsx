@@ -3,6 +3,8 @@
    ============================================================ */
 import React, { useEffect, useState, useRef } from "react";
 import "./home.css";
+import ProfilePanel from "./ProfilePanel";
+import SettingsPanel from "./SettingsPanel";
 
 interface Song {
   id: number;
@@ -11,12 +13,10 @@ interface Song {
   genre: string;
   cover_url: string;
   audio_url: string;
-
-  // extras
   lyrics?: string;
   like_count?: number;
   comment_count?: number;
-  play_count?: number; 
+  play_count?: number;
 }
 
 interface Playlist {
@@ -47,6 +47,9 @@ const getAuthToken = (): string | null => localStorage.getItem("neobeat_token");
    3. COMPONENTE PRINCIPAL
    ============================================================ */
 const Home: React.FC = () => {
+
+  /* ---- Estado de autenticação ---- */
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("neobeat_token"));
 
   /* ---- States gerais ---- */
   const [songs, setSongs] = useState<Song[]>([]);
@@ -84,6 +87,16 @@ const Home: React.FC = () => {
   const [activePlaylistSongs, setActivePlaylistSongs] = useState<Song[]>([]);
   const [loadingPlaylistSongs, setLoadingPlaylistSongs] = useState(false);
 
+  /* ---- States dos painéis ---- */
+  const [showProfile, setShowProfile] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+
+  /* ---- States de comentários ---- */
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
+  const [comments, setComments] = useState<any[]>([]);
+  const [newComment, setNewComment] = useState("");
+  const [isLiking, setIsLiking] = useState(false);
+
   /* ============================================================
      REFS para evitar closure stale nos callbacks do player
      ============================================================ */
@@ -96,16 +109,6 @@ const Home: React.FC = () => {
   const topSongsRef = useRef(topSongs);
   const filteredSongsRef = useRef(filteredSongs);
   const searchRef = useRef(search);
-  const [showCommentsModal, setShowCommentsModal] = useState(false);
-  const [comments, setComments] = useState<any[]>([]);
-  const [newComment, setNewComment] = useState("");
-  const [isLiking, setIsLiking] = useState(false);
-
-
-
-
-
-
 
   useEffect(() => { activePlaylistRef.current = activePlaylist; }, [activePlaylist]);
   useEffect(() => { activePlaylistSongsRef.current = activePlaylistSongs; }, [activePlaylistSongs]);
@@ -118,7 +121,41 @@ const Home: React.FC = () => {
   useEffect(() => { searchRef.current = search; }, [search]);
 
   /* ============================================================
-     4. FUNÇÕES AUXILIARES
+     4. RENOVAR SESSÃO AO CARREGAR A PÁGINA
+     ============================================================ */
+  useEffect(() => {
+    const refreshSession = async () => {
+      const refresh_token = localStorage.getItem("neobeat_refresh_token");
+      if (!refresh_token) return;
+
+      try {
+        const res = await fetch("/auth/refresh", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ refresh_token }),
+        });
+
+        if (!res.ok) {
+          localStorage.removeItem("neobeat_token");
+          localStorage.removeItem("neobeat_refresh_token");
+          setIsLoggedIn(false);
+          return;
+        }
+
+        const data = await res.json();
+        localStorage.setItem("neobeat_token", data.session.access_token);
+        localStorage.setItem("neobeat_refresh_token", data.session.refresh_token);
+        setIsLoggedIn(true);
+      } catch (err) {
+        console.error("Erro ao renovar sessão:", err);
+      }
+    };
+
+    refreshSession();
+  }, []);
+
+  /* ============================================================
+     5. FUNÇÕES AUXILIARES
      ============================================================ */
   const formatTime = (time: number) => {
     if (isNaN(time)) return "0:00";
@@ -139,7 +176,6 @@ const Home: React.FC = () => {
     return songs;
   };
 
-  /* Versão via refs — segura para usar dentro de callbacks */
   const getDisplayListRef = () => {
     if (searchRef.current) return filteredSongsRef.current;
     if (topSongsRef.current.length > 0) return topSongsRef.current;
@@ -151,6 +187,15 @@ const Home: React.FC = () => {
     setTimeout(() => setFeedbackMsg(null), 2500);
   };
 
+  /* Protege ações que exigem login */
+  const requireLogin = (action: () => void) => {
+    if (!isLoggedIn) {
+      showFeedback("Faça login para continuar 🔐");
+      return;
+    }
+    action();
+  };
+
   const closeCreateModal = () => {
     setShowCreateModal(false);
     setNewPlaylistName("");
@@ -159,7 +204,7 @@ const Home: React.FC = () => {
   };
 
   /* ============================================================
-     5. CONTROLE DO PLAYER
+     6. CONTROLE DO PLAYER
      ============================================================ */
   const togglePlay = () => {
     if (!audioRef.current) return;
@@ -193,10 +238,6 @@ const Home: React.FC = () => {
     if (audioRef.current) audioRef.current.volume = value;
   };
 
-  /* ============================================================
-     playNext / playPrev / handleEnded — usam refs para evitar
-     closure stale (valores "congelados" do momento do registro)
-     ============================================================ */
   const playNext = () => {
     const list = activePlaylistRef.current
       ? activePlaylistSongsRef.current
@@ -231,16 +272,15 @@ const Home: React.FC = () => {
   };
 
   /* ============================================================
-     6. BUSCAR DADOS DA API
+     7. BUSCAR DADOS DA API
      ============================================================ */
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [resSongs, resTop, resPlaylists] = await Promise.all([
+        const [resSongs, resTop] = await Promise.all([
           fetch("/api/songs"),
           fetch("/api/rankings/top-songs"),
-          fetch("/api/playlists", { headers: getAuthHeaders() }),
         ]);
 
         const songsData = await resSongs.json();
@@ -248,7 +288,12 @@ const Home: React.FC = () => {
         setFilteredSongs(songsData || []);
 
         if (resTop.ok) setTopSongs((await resTop.json()) || []);
-        if (resPlaylists.ok) setPlaylists((await resPlaylists.json()) || []);
+
+        /* Só busca playlists se estiver logado */
+        if (isLoggedIn) {
+          const resPlaylists = await fetch("/api/playlists", { headers: getAuthHeaders() });
+          if (resPlaylists.ok) setPlaylists((await resPlaylists.json()) || []);
+        }
       } catch (err) {
         console.error("Erro ao buscar dados:", err);
       } finally {
@@ -256,69 +301,68 @@ const Home: React.FC = () => {
       }
     };
     fetchData();
-  }, []);
+  }, [isLoggedIn]);
 
   /* ============================================================
-     7. TOCAR MÚSICA
+     8. TOCAR MÚSICA
      ============================================================ */
   const handlePlay = async (song: Song) => {
-  setCurrentSong(song);
-  setIsPlaying(true);
-  setProgress(0);
-  setCurrentTime("0:00");
-  setDuration("0:00");
+    setCurrentSong(song);
+    setIsPlaying(true);
+    setProgress(0);
+    setCurrentTime("0:00");
+    setDuration("0:00");
 
-  // Dá play no áudio
-  setTimeout(() => {
-    if (audioRef.current) {
-      audioRef.current.play();
-      setIsPlaying(true);
-    }
-  }, 0);
+    setTimeout(() => {
+      if (audioRef.current) {
+        audioRef.current.play();
+        setIsPlaying(true);
+      }
+    }, 0);
 
-  try {
-    // Busca dados em paralelo
-    const [lyricsRes, likesRes, commentsRes, playsRes] = await Promise.all([
-      fetch(`/api/songs/${song.id}/lyrics`),
-      fetch(`/api/songs/${song.id}/likes`),
-      fetch(`/api/songs/${song.id}/comments`),
-      fetch(`/api/songs/${song.id}/plays`), 
-]);
+    try {
+      const [lyricsRes, likesRes, commentsRes, playsRes] = await Promise.all([
+        fetch(`/api/songs/${song.id}/lyrics`),
+        fetch(`/api/songs/${song.id}/likes`),
+        fetch(`/api/songs/${song.id}/comments`),
+        fetch(`/api/songs/${song.id}/plays`),
+      ]);
 
-    const [lyricsData, likesData, commentsData, playsData] = await Promise.all([
-  lyricsRes.json(),
-  likesRes.json(),
-  commentsRes.json(),
-  playsRes.json(), // 
-]);
+      const [lyricsData, likesData, commentsData, playsData] = await Promise.all([
+        lyricsRes.json(),
+        likesRes.json(),
+        commentsRes.json(),
+        playsRes.json(),
+      ]);
 
-    // Atualiza música com dados extras
       setCurrentSong(prev =>
-    prev
-      ? {
-          ...prev,
-          lyrics: lyricsData.lyrics,
-          like_count: likesData.count,
-          comment_count: commentsData.length,
-          play_count: playsData.count, // 👈 AGORA FUNCIONA
-        }
-      : null
-  );
+        prev
+          ? {
+              ...prev,
+              lyrics: lyricsData.lyrics,
+              like_count: likesData.count,
+              comment_count: commentsData.length,
+              play_count: playsData.count,
+            }
+          : null
+      );
 
-    // Registra play
-    await fetch("/api/stats/play", {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ song_id: song.id }),
-    });
+      /* Só registra play se logado */
+      if (isLoggedIn) {
+        await fetch("/api/stats/play", {
+          method: "POST",
+          headers: getAuthHeaders(),
+          body: JSON.stringify({ song_id: song.id }),
+        });
+      }
 
-  } catch (err) {
-    console.error("Erro no handlePlay:", err);
-  }
-};
+    } catch (err) {
+      console.error("Erro no handlePlay:", err);
+    }
+  };
 
   /* ============================================================
-     8. ABRIR PLAYLIST
+     9. ABRIR PLAYLIST
      ============================================================ */
   const openPlaylist = async (pl: Playlist) => {
     setActivePlaylist(pl);
@@ -344,7 +388,7 @@ const Home: React.FC = () => {
   };
 
   /* ============================================================
-     9. DELETAR PLAYLIST INTEIRA
+     10. DELETAR PLAYLIST INTEIRA
      ============================================================ */
   const handleDeletePlaylist = async (playlistId: string) => {
     if (!confirm("Tem certeza que quer deletar esta playlist?")) return;
@@ -364,7 +408,7 @@ const Home: React.FC = () => {
   };
 
   /* ============================================================
-     10. REMOVER MÚSICA DA PLAYLIST
+     11. REMOVER MÚSICA DA PLAYLIST
      ============================================================ */
   const handleRemoveSongFromPlaylist = async (song: Song) => {
     if (!activePlaylist) return;
@@ -386,7 +430,7 @@ const Home: React.FC = () => {
   };
 
   /* ============================================================
-     11. FUNÇÕES DE CRIAR PLAYLIST
+     12. FUNÇÕES DE CRIAR PLAYLIST
      ============================================================ */
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -441,7 +485,7 @@ const Home: React.FC = () => {
   };
 
   /* ============================================================
-     12. FILTRO DE BUSCA
+     13. FILTRO DE BUSCA
      ============================================================ */
   useEffect(() => {
     const term = search.toLowerCase();
@@ -460,17 +504,17 @@ const Home: React.FC = () => {
   };
 
   /* ============================================================
-     13. comentários (modal)
+     14. COMENTÁRIOS (modal)
      ============================================================ */
   const loadComments = async (songId: number) => {
-  try {
-    const res = await fetch(`/api/songs/${songId}/comments`);
-    const data = await res.json();
-    setComments(data || []);
-  } catch (err) {
-    console.error("Erro ao carregar comentários:", err);
-  }
-};
+    try {
+      const res = await fetch(`/api/songs/${songId}/comments`);
+      const data = await res.json();
+      setComments(data || []);
+    } catch (err) {
+      console.error("Erro ao carregar comentários:", err);
+    }
+  };
 
   const openCommentsModal = async () => {
     if (!currentSong) return;
@@ -479,63 +523,44 @@ const Home: React.FC = () => {
   };
 
   const handleSendComment = async () => {
-  if (!currentSong || !newComment.trim()) return;
-
-  try {
-    const res = await fetch(`/api/songs/${currentSong.id}/comments`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-      body: JSON.stringify({ content: newComment.trim() }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      console.error(data);
-      showFeedback(data.error || "Erro ao comentar");
-      return;
+    if (!currentSong || !newComment.trim()) return;
+    try {
+      const res = await fetch(`/api/songs/${currentSong.id}/comments`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify({ content: newComment.trim() }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        showFeedback(data.error || "Erro ao comentar");
+        return;
+      }
+      setNewComment("");
+      await loadComments(currentSong.id);
+      setCurrentSong((prev) =>
+        prev ? { ...prev, comment_count: (prev.comment_count ?? 0) + 1 } : null
+      );
+    } catch (err) {
+      console.error("Erro ao comentar:", err);
     }
+  };
 
-    setNewComment("");
-    await loadComments(currentSong.id);
-
-    setCurrentSong((prev) =>
-      prev
-        ? {
-            ...prev,
-            comment_count: (prev.comment_count ?? 0) + 1,
-          }
-        : null
-    );
-  } catch (err) {
-    console.error("Erro ao comentar:", err);
-  }
-};
-
-/* ============================================================
-     14. curtir música
-=============================================================== */
-
-
-
+  /* ============================================================
+     15. CURTIR MÚSICA
+     ============================================================ */
   const handleLikeSong = async () => {
     if (!currentSong || isLiking) return;
-
     try {
       setIsLiking(true);
-
       const res = await fetch(`/api/songs/${currentSong.id}/like`, {
         method: "POST",
         headers: getAuthHeaders(),
       });
-
       const data = await res.json();
-
       if (!res.ok) {
         showFeedback(data.error || "Erro ao curtir música");
         return;
       }
-
       setCurrentSong((prev) =>
         prev
           ? {
@@ -553,18 +578,15 @@ const Home: React.FC = () => {
     }
   };
 
-/* ============================================================
-     15. download música
+  /* ============================================================
+     16. DOWNLOAD MÚSICA
      ============================================================ */
-
   const handleDownloadSong = async () => {
     if (!currentSong) return;
-
     try {
       const audioUrl = formatUrl(currentSong.audio_url);
       const response = await fetch(audioUrl);
       const blob = await response.blob();
-
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -580,7 +602,22 @@ const Home: React.FC = () => {
   };
 
   /* ============================================================
-     16. RENDER
+     17. LOGOUT — limpa tudo e redireciona
+     ============================================================ */
+  const handleLogout = () => {
+    localStorage.removeItem("neobeat_token");
+    localStorage.removeItem("neobeat_refresh_token");
+    setIsLoggedIn(false);
+    setPlaylists([]);
+    setActivePlaylist(null);
+    setActivePlaylistSongs([]);
+    setShowSettings(false);
+    setShowProfile(false);
+    window.location.href = "/login";
+  };
+
+  /* ============================================================
+     18. RENDER
      ============================================================ */
   const displayList = getDisplayList();
 
@@ -599,8 +636,17 @@ const Home: React.FC = () => {
           />
         </div>
         <div className="top-bar-right">
-          <button className="btn-profile">Perfil</button>
-          <button className="btn-profile">Configuração</button>
+          {isLoggedIn ? (
+            <>
+              <button className="btn-profile" onClick={() => setShowProfile(true)}>Perfil</button>
+              <button className="btn-profile" onClick={() => setShowSettings(true)}>Configuração</button>
+            </>
+          ) : (
+            <>
+              <button className="btn-profile" onClick={() => window.location.href = "/login"}>Entrar</button>
+              <button className="btn-profile" onClick={() => window.location.href = "/register"}>Cadastrar</button>
+            </>
+          )}
         </div>
       </header>
 
@@ -615,37 +661,53 @@ const Home: React.FC = () => {
         </div>
 
         <div className="sidebar-section">
-          <div className="sidebar-section-header">
-            <span>Suas Playlists</span>
-            <button className="btn-add-playlist" onClick={() => setShowCreateModal(true)} title="Nova playlist">+</button>
-          </div>
+          {isLoggedIn ? (
+            <>
+              <div className="sidebar-section-header">
+                <span>Suas Playlists</span>
+                <button
+                  className="btn-add-playlist"
+                  onClick={() => setShowCreateModal(true)}
+                  title="Nova playlist"
+                >+</button>
+              </div>
 
-          {playlists.length === 0 && <p className="sidebar-empty">Nenhuma playlist ainda.</p>}
+              {playlists.length === 0 && (
+                <p className="sidebar-empty">Nenhuma playlist ainda.</p>
+              )}
 
-          {playlists.map((pl) => (
+              {playlists.map((pl) => (
+                <div
+                  key={pl.id}
+                  className={`menu-item playlist-item${activePlaylist?.id === pl.id ? " active" : ""}`}
+                  onClick={() => openPlaylist(pl)}
+                  style={{ cursor: "pointer" }}
+                >
+                  {pl.cover_url
+                    ? <img src={formatUrl(pl.cover_url)} className="playlist-thumb" alt={pl.name} />
+                    : <span className="playlist-icon">🎵</span>
+                  }
+                  {pl.name}
+                </div>
+              ))}
+            </>
+          ) : (
             <div
-              key={pl.id}
-              className={`menu-item playlist-item${activePlaylist?.id === pl.id ? " active" : ""}`}
-              onClick={() => openPlaylist(pl)}
-              style={{ cursor: "pointer" }}
+              className="sidebar-empty"
+              style={{ cursor: "pointer", color: "#00d2ff", padding: "12px 16px", fontSize: 13 }}
+              onClick={() => window.location.href = "/login"}
             >
-              {pl.cover_url
-                ? <img src={formatUrl(pl.cover_url)} className="playlist-thumb" alt={pl.name} />
-                : <span className="playlist-icon">🎵</span>
-              }
-              {pl.name}
+              🔐 Entre para ver suas playlists
             </div>
-          ))}
+          )}
         </div>
       </aside>
 
       {/* CONTEÚDO PRINCIPAL */}
       <main className="main-content">
 
-        {/* ===== TELA DE PLAYLIST ===== */}
         {activePlaylist ? (
           <div className="playlist-view">
-
             <div className="playlist-view-header">
               <div className="playlist-view-cover">
                 {activePlaylist.cover_url
@@ -712,10 +774,7 @@ const Home: React.FC = () => {
                       <td className="song-remove-cell">
                         <button
                           className="btn-remove-song"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemoveSongFromPlaylist(song);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); handleRemoveSongFromPlaylist(song); }}
                           title="Remover da playlist"
                         >✕</button>
                       </td>
@@ -727,7 +786,6 @@ const Home: React.FC = () => {
           </div>
 
         ) : (
-          /* ===== TELA INICIAL ===== */
           <div className="songs-row-container">
             <h2>{search ? "Resultados" : "As Mais Ouvidas"}</h2>
 
@@ -752,11 +810,14 @@ const Home: React.FC = () => {
                   >
                     <div className="img-container">
                       <img src={formatUrl(song.cover_url)} alt={song.title} />
-                      <button
-                        className="btn-add-to-playlist"
-                        onClick={(e) => { e.stopPropagation(); setShowAddToPlaylist(song.id); }}
-                        title="Adicionar à playlist"
-                      >+</button>
+                      {/* Botão + só aparece se logado */}
+                      {isLoggedIn && (
+                        <button
+                          className="btn-add-to-playlist"
+                          onClick={(e) => { e.stopPropagation(); setShowAddToPlaylist(song.id); }}
+                          title="Adicionar à playlist"
+                        >+</button>
+                      )}
                     </div>
                     <div className="card-info">
                       <strong>{song.title}</strong>
@@ -772,53 +833,50 @@ const Home: React.FC = () => {
 
       {/* SIDEBAR DIREITA */}
       <aside className="sidebar-right">
-  {currentSong && (
-    <div className="song-details">
-
-      {/* IMAGEM */}
-      <img
-        src={formatUrl(currentSong.cover_url)}
-        className="current-art"
-        alt={currentSong.title}
-      />
-
-      {/* CONTROLES */}
-     <div className="song-actions">
-  <button className="action-pill">
-    ▶ {currentSong.play_count ?? 0}
-  </button>
-
-  <button className="action-pill" onClick={handleLikeSong}>
-    👍 {currentSong.like_count ?? 0}
-  </button>
-
-  <button className="action-pill" onClick={openCommentsModal}>
-    💬 {currentSong.comment_count ?? 0}
-  </button>
-
-  <button className="action-pill" onClick={handleDownloadSong}>
-    ⬇
-  </button>
-</div>
-
-      {/* INFO */}
-      <h2>{currentSong.title}</h2>
-      <p>{currentSong.artist}</p>
-
-      <p style={{ color: "#aaa" }}>
-        {currentSong.genre}
-      </p>
-
-      {/* LETRA */}
-      {currentSong.lyrics && (
-        <div className="lyrics-box">
-          <pre>{currentSong.lyrics}</pre>
-        </div>
-      )}
-
-    </div>
-  )}
-</aside>
+        {currentSong && (
+          <div className="song-details">
+            <img
+              src={formatUrl(currentSong.cover_url)}
+              className="current-art"
+              alt={currentSong.title}
+            />
+            <div className="song-actions">
+              <button className="action-pill">
+                ▶ {currentSong.play_count ?? 0}
+              </button>
+              <button
+                className="action-pill"
+                onClick={() => requireLogin(handleLikeSong)}
+                title={isLoggedIn ? "Curtir" : "Faça login para curtir"}
+              >
+                👍 {currentSong.like_count ?? 0}
+              </button>
+              <button
+                className="action-pill"
+                onClick={() => requireLogin(openCommentsModal)}
+                title={isLoggedIn ? "Comentários" : "Faça login para comentar"}
+              >
+                💬 {currentSong.comment_count ?? 0}
+              </button>
+              <button
+                className="action-pill"
+                onClick={() => requireLogin(handleDownloadSong)}
+                title={isLoggedIn ? "Baixar" : "Faça login para baixar"}
+              >
+                ⬇
+              </button>
+            </div>
+            <h2>{currentSong.title}</h2>
+            <p>{currentSong.artist}</p>
+            <p style={{ color: "#aaa" }}>{currentSong.genre}</p>
+            {currentSong.lyrics && (
+              <div className="lyrics-box">
+                <pre>{currentSong.lyrics}</pre>
+              </div>
+            )}
+          </div>
+        )}
+      </aside>
 
       {/* PLAYER */}
       {currentSong && (
@@ -827,7 +885,7 @@ const Home: React.FC = () => {
             ref={audioRef}
             key={currentSong.id}
             src={formatUrl(currentSong.audio_url)}
-            autoPlay      
+            autoPlay
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={onLoadedMetadata}
             onEnded={handleEnded}
@@ -863,7 +921,6 @@ const Home: React.FC = () => {
             </div>
           </div>
           <div className="player-right">
-            <button className="btn-heart">💜</button>
             <div className="volume-wrapper">
               <span>{volume === 0 ? "🔇" : "🔊"}</span>
               <input type="range" min="0" max="1" step="0.01" value={volume}
@@ -931,39 +988,58 @@ const Home: React.FC = () => {
           </div>
         </div>
       )}
-{showCommentsModal && (
-      <div className="modal-overlay" onClick={() => setShowCommentsModal(false)}>
-        <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-          <h3>Comentários</h3>
 
-          {comments.length === 0 ? (
-            <p>Nenhum comentário ainda.</p>
-          ) : (
-            comments.map((c) => (
-              <div key={c.id}>
-                <p>{c.content}</p>
-              </div>
-            ))
-          )}
-
-          <input
-            value={newComment}
-            onChange={(e) => setNewComment(e.target.value)}
-            placeholder="Comentar..."
-          />
-
-          <button onClick={handleSendComment}>Enviar</button>
-
-          <button onClick={() => setShowCommentsModal(false)}>
-            Fechar
-          </button>
+      {/* MODAL: COMENTÁRIOS */}
+      {showCommentsModal && (
+        <div className="modal-overlay" onClick={() => setShowCommentsModal(false)}>
+          <div className="modal-box" onClick={(e) => e.stopPropagation()}>
+            <h3>Comentários</h3>
+            {comments.length === 0 ? (
+              <p>Nenhum comentário ainda.</p>
+            ) : (
+              comments.map((c) => (
+                <div key={c.id} className="comment-item">
+                  <strong>{c.username}</strong>
+                  <p>{c.content}</p>
+                </div>
+              ))
+            )}
+            <input
+              value={newComment}
+              onChange={(e) => setNewComment(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSendComment()}
+              placeholder="Comentar..."
+            />
+            <button onClick={handleSendComment}>Enviar</button>
+            <button onClick={() => setShowCommentsModal(false)}>Fechar</button>
+          </div>
         </div>
-      </div>
-    )}
+      )}
+
+      {/* PAINEL: PERFIL */}
+      {showProfile && isLoggedIn && (
+        <ProfilePanel
+          onClose={() => setShowProfile(false)}
+          formatUrl={formatUrl}
+          getAuthHeaders={getAuthHeaders}
+          onPlaySong={(song) => {
+            handlePlay(song as unknown as Song);
+            setShowProfile(false);
+          }}
+        />
+      )}
+
+      {/* PAINEL: CONFIGURAÇÕES */}
+      {showSettings && isLoggedIn && (
+        <SettingsPanel
+          onClose={() => setShowSettings(false)}
+          getAuthHeaders={getAuthHeaders}
+          onLogout={handleLogout}
+        />
+      )}
+
     </div>
   );
 };
-
-
 
 export default Home;
