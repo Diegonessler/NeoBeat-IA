@@ -4,6 +4,7 @@ import Register from "./pages/Register";
 import Home from "./pages/Home";
 import "./App.css";
 
+
 function App() {
   const [page, setPage] = useState<"login" | "register" | "home">(() => {
     const token = localStorage.getItem("neobeat_token");

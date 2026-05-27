@@ -1,0 +1,42 @@
+{
+  "settings": {
+    "title": "Settings",
+    "audio": "🎧 Audio",
+    "appearance": "🎨 Appearance",
+    "account": "🔐 Account",
+    "streaming_quality": "Streaming quality",
+    "theme": "Theme",
+    "theme_dark": "🌙 Dark",
+    "theme_light": "☀️ Light",
+    "language": "Language",
+    "change_password": "Change password",
+    "current_password": "Current password",
+    "new_password": "New password",
+    "confirm_password": "Confirm new password",
+    "save_password": "Save password",
+    "saving": "Saving...",
+    "logout": "Log out"
+  },
+  "messages": {
+    "fill_all_fields": "Please fill in all fields.",
+    "passwords_dont_match": "Passwords do not match.",
+    "password_too_short": "Password must be at least 6 characters.",
+    "password_changed": "Password changed successfully! ✅",
+    "password_error": "Error changing password.",
+    "connection_error": "Connection error."
+  },
+  "player": {
+    "play": "Play",
+    "pause": "Pause",
+    "next": "Next",
+    "previous": "Previous",
+    "shuffle": "Shuffle",
+    "repeat": "Repeat"
+  },
+  "nav": {
+    "home": "Home",
+    "search": "Search",
+    "library": "Library",
+    "profile": "Profile"
+  }
+}

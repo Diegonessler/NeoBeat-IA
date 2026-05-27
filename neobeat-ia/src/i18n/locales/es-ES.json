@@ -1,0 +1,42 @@
+{
+  "settings": {
+    "title": "Configuración",
+    "audio": "🎧 Audio",
+    "appearance": "🎨 Apariencia",
+    "account": "🔐 Cuenta",
+    "streaming_quality": "Calidad de streaming",
+    "theme": "Tema",
+    "theme_dark": "🌙 Oscuro",
+    "theme_light": "☀️ Claro",
+    "language": "Idioma",
+    "change_password": "Cambiar contraseña",
+    "current_password": "Contraseña actual",
+    "new_password": "Nueva contraseña",
+    "confirm_password": "Confirmar nueva contraseña",
+    "save_password": "Guardar contraseña",
+    "saving": "Guardando...",
+    "logout": "Cerrar sesión"
+  },
+  "messages": {
+    "fill_all_fields": "Completa todos los campos.",
+    "passwords_dont_match": "Las contraseñas no coinciden.",
+    "password_too_short": "La contraseña debe tener al menos 6 caracteres.",
+    "password_changed": "¡Contraseña cambiada con éxito! ✅",
+    "password_error": "Error al cambiar la contraseña.",
+    "connection_error": "Error de conexión."
+  },
+  "player": {
+    "play": "Reproducir",
+    "pause": "Pausar",
+    "next": "Siguiente",
+    "previous": "Anterior",
+    "shuffle": "Aleatorio",
+    "repeat": "Repetir"
+  },
+  "nav": {
+    "home": "Inicio",
+    "search": "Buscar",
+    "library": "Biblioteca",
+    "profile": "Perfil"
+  }
+}

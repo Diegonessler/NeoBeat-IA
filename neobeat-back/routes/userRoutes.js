@@ -75,4 +75,39 @@ router.post("/me/avatar", authMiddleware, upload.single("avatar"), async (req, r
   return res.json({ avatar_url: avatarUrl });
 });
 
+// PUT /api/me/password
+router.put("/me/password", authMiddleware, async (req, res) => {
+  const { old_password, new_password } = req.body;
+
+  if (!old_password || !new_password) {
+    return res.status(400).json({ error: "Preencha todos os campos." });
+  }
+
+  if (new_password.length < 6) {
+    return res.status(400).json({ error: "A senha deve ter ao menos 6 caracteres." });
+  }
+
+  // 1. Verifica a senha atual tentando fazer login
+  const { error: signInError } = await supabase.auth.signInWithPassword({
+    email: req.user.email,
+    password: old_password,
+  });
+
+  if (signInError) {
+    return res.status(401).json({ error: "Senha atual incorreta." });
+  }
+
+  // 2. Atualiza para a nova senha via admin
+  const { error: updateError } = await supabase.auth.admin.updateUserById(
+    req.user.id,
+    { password: new_password }
+  );
+
+  if (updateError) {
+    return res.status(500).json({ error: updateError.message });
+  }
+
+  return res.json({ message: "Senha alterada com sucesso." });
+});
+
 module.exports = router;
