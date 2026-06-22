@@ -33,10 +33,37 @@
     "shuffle": "Aleatorio",
     "repeat": "Repetir"
   },
-  "nav": {
-    "home": "Inicio",
-    "search": "Buscar",
-    "library": "Biblioteca",
-    "profile": "Perfil"
-  }
+  "nav": 
+{ "home": "Inicio", 
+"search": "¿Qué quieres escuchar?", 
+"profile": "Perfil",
+"settings": "Configuración",
+"login": "Entrar",
+"register": "Registrarse" 
+   },
+   
+"home": { 
+"top_songs": "Las más escuchadas",
+"results": "Resultados",
+"no_results": "No se encontraron canciones.",
+"no_songs": "No hay canciones disponibles.",
+"loading": "Cargando canciones...",
+"playlists": "Tus Playlists",
+"no_playlists": "Ninguna playlist aún.",
+"login_playlists": "Entra para ver tus playlists",
+"new_playlist": "Nueva Playlist",
+"playlist_name": "Nombre de la playlist",
+"add_cover": "Agregar portada", "cancel": "Cancelar",
+"create": "Crear", "add_to_playlist": "Agregar a Playlist",
+"no_playlists_created": "Ninguna playlist creada aún.",
+"close": "Cerrar",
+"comments": "Comentarios",
+"no_comments": "Sin comentarios aún.",
+"comment_placeholder": "Comentar...",
+"send": "Enviar",
+"songs": "canciones",
+"song": "canción",
+"delete": "Eliminar",
+"loading_songs": "Cargando canciones..."
+}
 }

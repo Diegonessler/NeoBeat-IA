@@ -6,12 +6,11 @@ import "./App.css";
 
 
 function App() {
-  const [page, setPage] = useState<"login" | "register" | "home">(() => {
-    const token = localStorage.getItem("neobeat_token");
-    return token ? "home" : "login";
+  const [page, setPage] = useState<"login" | "register" | "home">("home");(() => {
+    return "home";
   });
 
-  return (
+  return (  
     <div>
       {page === "login" && (
         <Login
@@ -24,7 +23,11 @@ function App() {
           goToLogin={() => setPage("login")}
         />
       )}
-      {page === "home" && <Home />}
+      {page === "home" && <Home
+    goToLogin={() => setPage("login")}
+    goToRegister={() => setPage("register")}
+      />}
+      
     </div>
   );
 }

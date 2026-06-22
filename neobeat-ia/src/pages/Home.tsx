@@ -1,10 +1,23 @@
 /* ============================================================
    1. IMPORTS E TIPOS
    ============================================================ */
-import React, { useEffect, useState, useRef } from "react";
 import "./home.css";
 import ProfilePanel from "./ProfilePanel";
 import SettingsPanel from "./SettingsPanel";
+import { useEffect, useRef, useState } from "react";
+import i18n from "../i18n/index";
+
+export const useI18n = () => {
+  const [, forceUpdate] = useState(0);
+
+  useEffect(() => {
+    const handler = () => forceUpdate(n => n + 1);
+    i18n.on("languageChanged", handler);
+    return () => i18n.off("languageChanged", handler);
+  }, []);
+
+  return (key: string) => i18n.t(key);
+};
 
 interface Song {
   id: number;
@@ -32,6 +45,14 @@ interface PlaylistSong {
 }
 
 /* ============================================================
+   PROPS
+   ============================================================ */
+interface HomeProps {
+  goToLogin: () => void;
+  goToRegister: () => void;
+}
+
+/* ============================================================
    2. HELPER — token do localStorage
    ============================================================ */
 const getAuthHeaders = (): Record<string, string> => {
@@ -46,7 +67,10 @@ const getAuthToken = (): string | null => localStorage.getItem("neobeat_token");
 /* ============================================================
    3. COMPONENTE PRINCIPAL
    ============================================================ */
-const Home: React.FC = () => {
+const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
+
+  /* ---- Hook de tradução — conecta o Home ao i18n ---- */
+  const t = useI18n();
 
   /* ---- Estado de autenticação ---- */
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("neobeat_token"));
@@ -87,6 +111,10 @@ const Home: React.FC = () => {
   const [activePlaylistSongs, setActivePlaylistSongs] = useState<Song[]>([]);
   const [loadingPlaylistSongs, setLoadingPlaylistSongs] = useState(false);
 
+  /* ---- States da playlist de curtidas ---- */
+  const [likedSongs, setLikedSongs] = useState<Song[]>([]);
+  const [showLiked, setShowLiked] = useState(false);
+
   /* ---- States dos painéis ---- */
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -109,6 +137,9 @@ const Home: React.FC = () => {
   const topSongsRef = useRef(topSongs);
   const filteredSongsRef = useRef(filteredSongs);
   const searchRef = useRef(search);
+  const showLikedRef = useRef(showLiked);
+  const likedSongsRef = useRef(likedSongs);
+  const [topArtists, setTopArtists] = useState<{ artist: string; plays: number }[]>([]);
 
   useEffect(() => { activePlaylistRef.current = activePlaylist; }, [activePlaylist]);
   useEffect(() => { activePlaylistSongsRef.current = activePlaylistSongs; }, [activePlaylistSongs]);
@@ -119,6 +150,8 @@ const Home: React.FC = () => {
   useEffect(() => { topSongsRef.current = topSongs; }, [topSongs]);
   useEffect(() => { filteredSongsRef.current = filteredSongs; }, [filteredSongs]);
   useEffect(() => { searchRef.current = search; }, [search]);
+  useEffect(() => { showLikedRef.current = showLiked; }, [showLiked]);
+  useEffect(() => { likedSongsRef.current = likedSongs; }, [likedSongs]);
 
   /* ============================================================
      4. RENOVAR SESSÃO AO CARREGAR A PÁGINA
@@ -190,7 +223,7 @@ const Home: React.FC = () => {
   /* Protege ações que exigem login */
   const requireLogin = (action: () => void) => {
     if (!isLoggedIn) {
-      showFeedback("Faça login para continuar 🔐");
+      showFeedback(t("messages.login_required") || "Faça login para continuar 🔐");
       return;
     }
     action();
@@ -239,10 +272,17 @@ const Home: React.FC = () => {
   };
 
   const playNext = () => {
-    const list = activePlaylistRef.current
-      ? activePlaylistSongsRef.current
-      : getDisplayListRef();
     const song = currentSongRef.current;
+    let list: Song[];
+
+    if (showLikedRef.current) {
+      list = likedSongsRef.current;
+    } else if (activePlaylistRef.current) {
+      list = activePlaylistSongsRef.current;
+    } else {
+      list = getDisplayListRef();
+    }
+
     if (!song || list.length === 0) return;
     if (isShuffleRef.current) {
       handlePlay(list[Math.floor(Math.random() * list.length)]);
@@ -253,10 +293,17 @@ const Home: React.FC = () => {
   };
 
   const playPrev = () => {
-    const list = activePlaylistRef.current
-      ? activePlaylistSongsRef.current
-      : getDisplayListRef();
     const song = currentSongRef.current;
+    let list: Song[];
+
+    if (showLikedRef.current) {
+      list = likedSongsRef.current;
+    } else if (activePlaylistRef.current) {
+      list = activePlaylistSongsRef.current;
+    } else {
+      list = getDisplayListRef();
+    }
+
     if (!song || list.length === 0) return;
     const idx = list.findIndex((s) => s.id === song.id);
     handlePlay(list[(idx - 1 + list.length) % list.length]);
@@ -289,10 +336,18 @@ const Home: React.FC = () => {
 
         if (resTop.ok) setTopSongs((await resTop.json()) || []);
 
-        /* Só busca playlists se estiver logado */
         if (isLoggedIn) {
-          const resPlaylists = await fetch("/api/playlists", { headers: getAuthHeaders() });
+          const [resPlaylists, resLiked] = await Promise.all([
+            fetch("/api/playlists", { headers: getAuthHeaders() }),
+            fetch("/api/playlists/liked", { headers: getAuthHeaders() }),
+          ]);
+
           if (resPlaylists.ok) setPlaylists((await resPlaylists.json()) || []);
+
+          if (resLiked.ok) {
+            const likedData = await resLiked.json();
+            setLikedSongs(likedData);
+          }
         }
       } catch (err) {
         console.error("Erro ao buscar dados:", err);
@@ -347,7 +402,6 @@ const Home: React.FC = () => {
           : null
       );
 
-      /* Só registra play se logado */
       if (isLoggedIn) {
         await fetch("/api/stats/play", {
           method: "POST",
@@ -366,6 +420,7 @@ const Home: React.FC = () => {
      ============================================================ */
   const openPlaylist = async (pl: Playlist) => {
     setActivePlaylist(pl);
+    setShowLiked(false);
     setLoadingPlaylistSongs(true);
     try {
       const res = await fetch(`/api/playlists/${pl.id}/songs`, {
@@ -385,13 +440,14 @@ const Home: React.FC = () => {
   const closePlaylist = () => {
     setActivePlaylist(null);
     setActivePlaylistSongs([]);
+    setShowLiked(false);
   };
 
   /* ============================================================
      10. DELETAR PLAYLIST INTEIRA
      ============================================================ */
   const handleDeletePlaylist = async (playlistId: string) => {
-    if (!confirm("Tem certeza que quer deletar esta playlist?")) return;
+    if (!confirm(t("home.confirm_delete_playlist") || "Tem certeza que quer deletar esta playlist?")) return;
     try {
       const res = await fetch(`/api/playlists/${playlistId}`, {
         method: "DELETE",
@@ -400,7 +456,7 @@ const Home: React.FC = () => {
       if (res.ok) {
         setPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
         closePlaylist();
-        showFeedback("Playlist deletada.");
+        showFeedback(t("home.playlist_deleted") || "Playlist deletada.");
       }
     } catch (err) {
       console.error("Erro ao deletar playlist:", err);
@@ -418,8 +474,8 @@ const Home: React.FC = () => {
         headers: getAuthHeaders(),
       });
       if (res.ok) {
-        setActivePlaylistSongs((prev) => prev.filter((s) => s.id !== song.id));
-        showFeedback("Música removida da playlist.");
+        setActivePlaylistSongs((prev) => prev.filter((s: Song) => s.id !== song.id));
+        showFeedback(t("home.song_removed") || "Música removida da playlist.");
       } else {
         const data = await res.json();
         showFeedback(data.error || "Erro ao remover música.");
@@ -462,7 +518,7 @@ const Home: React.FC = () => {
       if (!res.ok) { showFeedback(created.error || "Erro ao criar playlist"); return; }
       setPlaylists((prev) => [created, ...prev]);
       closeCreateModal();
-      showFeedback("Playlist criada! 🎵");
+      showFeedback(t("home.playlist_created") || "Playlist criada! 🎵");
     } catch (err) {
       console.error("Erro ao criar playlist:", err);
     }
@@ -478,7 +534,7 @@ const Home: React.FC = () => {
       const data = await res.json();
       if (!res.ok) { showFeedback(data.error || "Erro ao adicionar música"); return; }
       setShowAddToPlaylist(null);
-      showFeedback("Música adicionada à playlist! ✅");
+      showFeedback(t("home.song_added") || "Música adicionada à playlist! ✅");
     } catch (err) {
       console.error("Erro ao adicionar à playlist:", err);
     }
@@ -561,6 +617,9 @@ const Home: React.FC = () => {
         showFeedback(data.error || "Erro ao curtir música");
         return;
       }
+
+      const songSnapshot = currentSong;
+
       setCurrentSong((prev) =>
         prev
           ? {
@@ -571,6 +630,14 @@ const Home: React.FC = () => {
             }
           : null
       );
+
+      // Atualiza a playlist de curtidas em tempo real
+      setLikedSongs(prev =>
+        data.liked
+          ? [songSnapshot, ...prev.filter(s => s.id !== songSnapshot.id)]
+          : prev.filter(s => s.id !== songSnapshot.id)
+      );
+
     } catch (err) {
       console.error("Erro ao curtir música:", err);
     } finally {
@@ -597,23 +664,24 @@ const Home: React.FC = () => {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Erro ao baixar música:", err);
-      showFeedback("Erro ao baixar música.");
+      showFeedback(t("home.download_error") || "Erro ao baixar música.");
     }
   };
 
   /* ============================================================
-     17. LOGOUT — limpa tudo e redireciona
+     17. LOGOUT — limpa tudo e navega via prop
      ============================================================ */
   const handleLogout = () => {
     localStorage.removeItem("neobeat_token");
     localStorage.removeItem("neobeat_refresh_token");
     setIsLoggedIn(false);
     setPlaylists([]);
+    setLikedSongs([]);
     setActivePlaylist(null);
     setActivePlaylistSongs([]);
+    setShowLiked(false);
     setShowSettings(false);
     setShowProfile(false);
-    window.location.href = "/login";
   };
 
   /* ============================================================
@@ -630,7 +698,7 @@ const Home: React.FC = () => {
         <div className="top-bar-center">
           <input
             type="text"
-            placeholder="O que você quer ouvir?"
+            placeholder={t("nav.search")}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -638,13 +706,13 @@ const Home: React.FC = () => {
         <div className="top-bar-right">
           {isLoggedIn ? (
             <>
-              <button className="btn-profile" onClick={() => setShowProfile(true)}>Perfil</button>
-              <button className="btn-profile" onClick={() => setShowSettings(true)}>Configuração</button>
+              <button className="btn-profile" onClick={() => setShowProfile(true)}>{t("nav.profile")}</button>
+              <button className="btn-profile" onClick={() => setShowSettings(true)}>{t("nav.settings")}</button>
             </>
           ) : (
             <>
-              <button className="btn-profile" onClick={() => window.location.href = "/login"}>Entrar</button>
-              <button className="btn-profile" onClick={() => window.location.href = "/register"}>Cadastrar</button>
+              <button className="btn-profile" onClick={() => goToLogin()}>{t("nav.login")}</button>
+              <button className="btn-profile" onClick={() => goToRegister()}>{t("nav.register")}</button>
             </>
           )}
         </div>
@@ -653,27 +721,40 @@ const Home: React.FC = () => {
       {/* SIDEBAR ESQUERDA */}
       <aside className="sidebar-left">
         <div
-          className={`menu-item${!activePlaylist ? " active" : ""}`}
+          className={`menu-item${!activePlaylist && !showLiked ? " active" : ""}`}
           onClick={closePlaylist}
           style={{ cursor: "pointer" }}
         >
-          Início
+          {t("nav.home")}
         </div>
 
         <div className="sidebar-section">
           {isLoggedIn ? (
             <>
               <div className="sidebar-section-header">
-                <span>Suas Playlists</span>
+                <span>{t("home.playlists")}</span>
                 <button
                   className="btn-add-playlist"
                   onClick={() => setShowCreateModal(true)}
-                  title="Nova playlist"
+                  title={t("home.new_playlist")}
                 >+</button>
               </div>
 
+              {/* ❤️ Playlist fixa de músicas curtidas */}
+              <div
+                className={`menu-item playlist-item${showLiked ? " active" : ""}`}
+                onClick={() => { setShowLiked(true); setActivePlaylist(null); setActivePlaylistSongs([]); }}
+                style={{ cursor: "pointer" }}
+              >
+                <span className="playlist-icon">❤️</span>
+                Músicas Curtidas
+                <span style={{ marginLeft: "auto", fontSize: 11, color: "#aaa" }}>
+                  {likedSongs.length}
+                </span>
+              </div>
+
               {playlists.length === 0 && (
-                <p className="sidebar-empty">Nenhuma playlist ainda.</p>
+                <p className="sidebar-empty">{t("home.no_playlists")}</p>
               )}
 
               {playlists.map((pl) => (
@@ -695,9 +776,9 @@ const Home: React.FC = () => {
             <div
               className="sidebar-empty"
               style={{ cursor: "pointer", color: "#00d2ff", padding: "12px 16px", fontSize: 13 }}
-              onClick={() => window.location.href = "/login"}
+              onClick={() => goToLogin()}
             >
-              🔐 Entre para ver suas playlists
+              🔐 {t("home.login_playlists")}
             </div>
           )}
         </div>
@@ -706,7 +787,86 @@ const Home: React.FC = () => {
       {/* CONTEÚDO PRINCIPAL */}
       <main className="main-content">
 
-        {activePlaylist ? (
+        {/* ===== VIEW: MÚSICAS CURTIDAS ===== */}
+        {showLiked ? (
+          <div className="playlist-view">
+            <div className="playlist-view-header">
+              <div className="playlist-view-cover">
+                <div
+                  className="playlist-view-cover-placeholder"
+                  style={{
+                    fontSize: 64,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "linear-gradient(135deg, #450a0a 0%, #991b1b 100%)",
+                    borderRadius: 8,
+                    width: "100%",
+                    height: "100%",
+                  }}
+                >
+                  ❤️
+                </div>
+              </div>
+              <div className="playlist-view-info">
+                <span className="playlist-view-label">Playlist</span>
+                <h1 className="playlist-view-title">Músicas Curtidas</h1>
+                <span className="playlist-view-count">
+                  {likedSongs.length}{" "}
+                  {likedSongs.length === 1 ? t("home.song") || "música" : t("home.songs") || "músicas"}
+                </span>
+              </div>
+            </div>
+
+            <div className="playlist-view-actions">
+              <button
+                className="playlist-play-btn"
+                onClick={() => likedSongs.length > 0 && handlePlay(likedSongs[0])}
+                disabled={likedSongs.length === 0}
+                title={t("player.play")}
+              >▶</button>
+            </div>
+
+            {likedSongs.length === 0 ? (
+              <p style={{ color: "#b3b3b3", padding: "20px" }}>
+                Nenhuma música curtida ainda. Clique em 👍 para começar!
+              </p>
+            ) : (
+              <table className="playlist-songs-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>{t("home.col_title") || "Título"}</th>
+                    <th>{t("home.col_artist") || "Artista"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {likedSongs.map((song, idx) => (
+                    <tr
+                      key={song.id}
+                      className={`playlist-song-row${currentSong?.id === song.id ? " playing" : ""}`}
+                      onClick={() => handlePlay(song)}
+                    >
+                      <td className="song-num">
+                        {currentSong?.id === song.id
+                          ? <span className="playing-indicator">♫</span>
+                          : idx + 1
+                        }
+                      </td>
+                      <td className="song-title-cell">
+                        <img src={formatUrl(song.cover_url)} className="song-row-thumb" alt={song.title} />
+                        <span>{song.title}</span>
+                      </td>
+                      <td className="song-artist-cell">{song.artist}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+
+        ) : activePlaylist ? (
+          /* ===== VIEW: PLAYLIST CRIADA ===== */
           <div className="playlist-view">
             <div className="playlist-view-header">
               <div className="playlist-view-cover">
@@ -719,7 +879,8 @@ const Home: React.FC = () => {
                 <span className="playlist-view-label">Playlist</span>
                 <h1 className="playlist-view-title">{activePlaylist.name}</h1>
                 <span className="playlist-view-count">
-                  {activePlaylistSongs.length} {activePlaylistSongs.length === 1 ? "música" : "músicas"}
+                  {activePlaylistSongs.length}{" "}
+                  {activePlaylistSongs.length === 1 ? t("home.song") : t("home.songs")}
                 </span>
               </div>
             </div>
@@ -729,26 +890,26 @@ const Home: React.FC = () => {
                 className="playlist-play-btn"
                 onClick={() => activePlaylistSongs.length > 0 && handlePlay(activePlaylistSongs[0])}
                 disabled={activePlaylistSongs.length === 0}
-                title="Tocar playlist"
+                title={t("player.play")}
               >▶</button>
               <button
                 className="playlist-delete-btn"
                 onClick={() => handleDeletePlaylist(activePlaylist.id)}
-                title="Deletar playlist"
-              >🗑 Deletar</button>
+                title={t("home.delete")}
+              >🗑 {t("home.delete")}</button>
             </div>
 
             {loadingPlaylistSongs ? (
-              <p style={{ color: "#b3b3b3", padding: "20px" }}>Carregando músicas...</p>
+              <p style={{ color: "#b3b3b3", padding: "20px" }}>{t("home.loading_songs")}</p>
             ) : activePlaylistSongs.length === 0 ? (
-              <p style={{ color: "#b3b3b3", padding: "20px" }}>Nenhuma música nesta playlist ainda.</p>
+              <p style={{ color: "#b3b3b3", padding: "20px" }}>{t("home.no_playlist_songs")}</p>
             ) : (
               <table className="playlist-songs-table">
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>Título</th>
-                    <th>Artista</th>
+                    <th>{t("home.col_title")}</th>
+                    <th>{t("home.col_artist")}</th>
                     <th></th>
                   </tr>
                 </thead>
@@ -775,7 +936,7 @@ const Home: React.FC = () => {
                         <button
                           className="btn-remove-song"
                           onClick={(e) => { e.stopPropagation(); handleRemoveSongFromPlaylist(song); }}
-                          title="Remover da playlist"
+                          title={t("home.remove_song")}
                         >✕</button>
                       </td>
                     </tr>
@@ -786,18 +947,19 @@ const Home: React.FC = () => {
           </div>
 
         ) : (
+          /* ===== VIEW: HOME (lista de músicas) ===== */
           <div className="songs-row-container">
-            <h2>{search ? "Resultados" : "As Mais Ouvidas"}</h2>
+            <h2>{search ? t("home.results") : t("home.top_songs")}</h2>
 
             <div className="scroll-wrapper">
               <button className="nav-arrow left" onClick={() => scrollRow("left")}>◀</button>
               <button className="nav-arrow right" onClick={() => scrollRow("right")}>▶</button>
 
-              {isLoading && <p style={{ color: "#b3b3b3", padding: "20px 0" }}>Carregando músicas...</p>}
+              {isLoading && <p style={{ color: "#b3b3b3", padding: "20px 0" }}>{t("home.loading")}</p>}
 
               {!isLoading && displayList.length === 0 && (
                 <p style={{ color: "#b3b3b3", padding: "20px 0" }}>
-                  {search ? "Nenhuma música encontrada." : "Nenhuma música disponível."}
+                  {search ? t("home.no_results") : t("home.no_songs")}
                 </p>
               )}
 
@@ -810,12 +972,11 @@ const Home: React.FC = () => {
                   >
                     <div className="img-container">
                       <img src={formatUrl(song.cover_url)} alt={song.title} />
-                      {/* Botão + só aparece se logado */}
                       {isLoggedIn && (
                         <button
                           className="btn-add-to-playlist"
                           onClick={(e) => { e.stopPropagation(); setShowAddToPlaylist(song.id); }}
-                          title="Adicionar à playlist"
+                          title={t("home.add_to_playlist")}
                         >+</button>
                       )}
                     </div>
@@ -830,6 +991,9 @@ const Home: React.FC = () => {
           </div>
         )}
       </main>
+
+
+      
 
       {/* SIDEBAR DIREITA */}
       <aside className="sidebar-right">
@@ -847,21 +1011,21 @@ const Home: React.FC = () => {
               <button
                 className="action-pill"
                 onClick={() => requireLogin(handleLikeSong)}
-                title={isLoggedIn ? "Curtir" : "Faça login para curtir"}
+                title={isLoggedIn ? t("home.like") : t("home.login_to_like")}
               >
                 👍 {currentSong.like_count ?? 0}
               </button>
               <button
                 className="action-pill"
                 onClick={() => requireLogin(openCommentsModal)}
-                title={isLoggedIn ? "Comentários" : "Faça login para comentar"}
+                title={isLoggedIn ? t("home.comments") : t("home.login_to_comment")}
               >
                 💬 {currentSong.comment_count ?? 0}
               </button>
               <button
                 className="action-pill"
                 onClick={() => requireLogin(handleDownloadSong)}
-                title={isLoggedIn ? "Baixar" : "Faça login para baixar"}
+                title={isLoggedIn ? t("home.download") : t("home.login_to_download")}
               >
                 ⬇
               </button>
@@ -897,8 +1061,8 @@ const Home: React.FC = () => {
           <div className="player-controls-spotify">
             <div className="control-buttons">
               <button className="btn-icon" onClick={() => setIsShuffle(!isShuffle)}
-                style={{ color: isShuffle ? "#00d2ff" : undefined }} title="Aleatório">🔀</button>
-              <button className="btn-icon" onClick={playPrev} title="Anterior">⏮</button>
+                style={{ color: isShuffle ? "#00d2ff" : undefined }} title={t("player.shuffle")}>🔀</button>
+              <button className="btn-icon" onClick={playPrev} title={t("player.previous")}>⏮</button>
               <button
                 className="btn-main-play"
                 onClick={togglePlay}
@@ -906,9 +1070,9 @@ const Home: React.FC = () => {
               >
                 {isPlaying ? "⏸" : "▶"}
               </button>
-              <button className="btn-icon" onClick={playNext} title="Próxima">⏭</button>
+              <button className="btn-icon" onClick={playNext} title={t("player.next")}>⏭</button>
               <button className="btn-icon" onClick={() => setIsRepeat(!isRepeat)}
-                style={{ color: isRepeat ? "#00d2ff" : undefined }} title="Repetir">🔁</button>
+                style={{ color: isRepeat ? "#00d2ff" : undefined }} title={t("player.repeat")}>🔁</button>
             </div>
             <div className="progress-container-wrapper">
               <span className="time-text">{currentTime}</span>
@@ -937,11 +1101,14 @@ const Home: React.FC = () => {
       {showCreateModal && (
         <div className="modal-overlay" onClick={closeCreateModal}>
           <div className="modal-box modal-create-playlist" onClick={(e) => e.stopPropagation()}>
-            <h3>Nova Playlist</h3>
+            <h3>{t("home.new_playlist")}</h3>
             <div className="cover-upload-area" onClick={() => coverInputRef.current?.click()}>
               {newPlaylistCoverPreview
                 ? <img src={newPlaylistCoverPreview} className="cover-preview" alt="Capa" />
-                : <div className="cover-placeholder"><span className="cover-icon">🖼️</span><span className="cover-label">Adicionar capa</span></div>
+                : <div className="cover-placeholder">
+                    <span className="cover-icon">🖼️</span>
+                    <span className="cover-label">{t("home.add_cover")}</span>
+                  </div>
               }
               {newPlaylistCoverPreview && (
                 <button className="cover-remove" onClick={(e) => { e.stopPropagation(); setNewPlaylistCover(null); setNewPlaylistCoverPreview(null); }}>✕</button>
@@ -950,15 +1117,15 @@ const Home: React.FC = () => {
             <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleCoverChange} />
             <input
               type="text"
-              placeholder="Nome da playlist"
+              placeholder={t("home.playlist_name")}
               value={newPlaylistName}
               onChange={(e) => setNewPlaylistName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCreatePlaylist()}
               autoFocus
             />
             <div className="modal-actions">
-              <button onClick={closeCreateModal}>Cancelar</button>
-              <button className="btn-confirm" onClick={handleCreatePlaylist} disabled={!newPlaylistName.trim()}>Criar</button>
+              <button onClick={closeCreateModal}>{t("home.cancel")}</button>
+              <button className="btn-confirm" onClick={handleCreatePlaylist} disabled={!newPlaylistName.trim()}>{t("home.create")}</button>
             </div>
           </div>
         </div>
@@ -968,9 +1135,9 @@ const Home: React.FC = () => {
       {showAddToPlaylist !== null && (
         <div className="modal-overlay" onClick={() => setShowAddToPlaylist(null)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <h3>Adicionar à Playlist</h3>
+            <h3>{t("home.add_to_playlist")}</h3>
             {playlists.length === 0
-              ? <p style={{ color: "#b3b3b3" }}>Nenhuma playlist criada ainda.</p>
+              ? <p style={{ color: "#b3b3b3" }}>{t("home.no_playlists_created")}</p>
               : playlists.map((pl) => (
                 <div key={pl.id} className="playlist-option"
                   onClick={() => handleAddToPlaylist(pl.id, showAddToPlaylist)}>
@@ -983,7 +1150,7 @@ const Home: React.FC = () => {
               ))
             }
             <div className="modal-actions">
-              <button onClick={() => setShowAddToPlaylist(null)}>Fechar</button>
+              <button onClick={() => setShowAddToPlaylist(null)}>{t("home.close")}</button>
             </div>
           </div>
         </div>
@@ -993,9 +1160,9 @@ const Home: React.FC = () => {
       {showCommentsModal && (
         <div className="modal-overlay" onClick={() => setShowCommentsModal(false)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
-            <h3>Comentários</h3>
+            <h3>{t("home.comments")}</h3>
             {comments.length === 0 ? (
-              <p>Nenhum comentário ainda.</p>
+              <p>{t("home.no_comments")}</p>
             ) : (
               comments.map((c) => (
                 <div key={c.id} className="comment-item">
@@ -1008,10 +1175,10 @@ const Home: React.FC = () => {
               value={newComment}
               onChange={(e) => setNewComment(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSendComment()}
-              placeholder="Comentar..."
+              placeholder={t("home.comment_placeholder")}
             />
-            <button onClick={handleSendComment}>Enviar</button>
-            <button onClick={() => setShowCommentsModal(false)}>Fechar</button>
+            <button onClick={handleSendComment}>{t("home.send")}</button>
+            <button onClick={() => setShowCommentsModal(false)}>{t("home.close")}</button>
           </div>
         </div>
       )}

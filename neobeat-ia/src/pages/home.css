@@ -39,6 +39,7 @@ body {
   padding: 0 20px;
   z-index: 1000;
   border-bottom: 1px solid var(--border-color);
+  
 }
 
 .top-bar-left {
@@ -171,6 +172,7 @@ body {
 
 .songs-row-container h2 {
   margin-bottom: 30px;
+  color: var(--text-main);  
 }
 
 .scroll-grid {

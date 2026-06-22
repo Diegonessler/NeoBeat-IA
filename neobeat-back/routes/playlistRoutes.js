@@ -89,6 +89,54 @@ router.post("/", upload.single("cover"), async (req, res) => {
 });
 
 /* ============================================================
+   GET /api/playlists/liked — busca músicas curtidas
+   CORREÇÃO: join manual para evitar dependência de FK no Supabase
+   ============================================================ */
+router.get("/liked", async (req, res) => {
+  try {
+    const user_id = await getUserId(req);
+    if (!user_id) return res.status(401).json({ error: "Não autorizado" });
+
+    // 1. Busca os IDs das músicas curtidas, em ordem de curtida
+    const { data: likes, error: likesError } = await supabase
+      .from("song_likes")
+      .select("song_id")
+      .eq("user_id", user_id)
+      .order("created_at", { ascending: false });
+
+    if (likesError) {
+      console.error("Erro ao buscar curtidas:", likesError.message);
+      return res.status(500).json({ error: "Erro ao buscar curtidas" });
+    }
+
+    if (!likes || likes.length === 0) return res.status(200).json([]);
+
+    const songIds = likes.map((row) => row.song_id);
+
+    // 2. Busca os dados completos das músicas
+    const { data: songs, error: songsError } = await supabase
+      .from("songs")
+      .select("*")
+      .in("id", songIds);
+
+    if (songsError) {
+      console.error("Erro ao buscar músicas curtidas:", songsError.message);
+      return res.status(500).json({ error: "Erro ao buscar músicas curtidas" });
+    }
+
+    // 3. Reordena mantendo a ordem de curtida (mais recente primeiro)
+    const ordered = songIds
+      .map((id) => songs.find((s) => s.id === id))
+      .filter(Boolean);
+
+    return res.status(200).json(ordered);
+  } catch (err) {
+    console.error("Erro inesperado:", err);
+    return res.status(500).json({ error: "Erro interno" });
+  }
+});
+
+/* ============================================================
    GET /api/playlists/:id/songs
    ============================================================ */
 router.get("/:id/songs", async (req, res) => {
@@ -195,7 +243,6 @@ router.delete("/:id/songs/:songId", async (req, res) => {
 
     const { id: playlist_id, songId: song_id } = req.params;
 
-    // Garante que a playlist pertence ao usuário
     const { data: playlist, error: playlistError } = await supabase
       .from("playlist")
       .select("id")
@@ -207,7 +254,6 @@ router.delete("/:id/songs/:songId", async (req, res) => {
       return res.status(403).json({ error: "Playlist não encontrada ou sem permissão" });
     }
 
-    // Converte song_id para número (vem como string na URL)
     const { error } = await supabase
       .from("playlist_songs")
       .delete()

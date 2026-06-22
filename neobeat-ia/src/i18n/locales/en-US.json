@@ -33,10 +33,37 @@
     "shuffle": "Shuffle",
     "repeat": "Repeat"
   },
-  "nav": {
-    "home": "Home",
-    "search": "Search",
-    "library": "Library",
-    "profile": "Profile"
-  }
+
+"nav": { "home": "Home",
+"search": "What do you want to listen to?",
+"profile": "Profile",
+"settings": "Settings",
+"login": "Log in",
+"register": "Sign up" },
+
+"home": { "top_songs": "Most Played",
+"results": "Results",
+"no_results": "No songs found.",
+"no_songs": "No songs available.",
+"loading": "Loading songs...",
+"playlists": "Your Playlists",
+"no_playlists": "No playlists yet.",
+"login_playlists": "Log in to see your playlists",
+"new_playlist": "New Playlist",
+"playlist_name": "Playlist name",
+"add_cover": "Add cover",
+"cancel": "Cancel",
+"create": "Create",
+"add_to_playlist": "Add to Playlist",
+"no_playlists_created": "No playlists created yet.",
+"close": "Close",
+"comments": "Comments",
+"no_comments": "No comments yet.",
+"comment_placeholder": "Comment...",
+"send": "Send",
+"songs": "songs",
+"song": "song",
+"delete": "Delete",
+"loading_songs": "Loading songs..."
+ }
 }
