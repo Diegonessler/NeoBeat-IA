@@ -23,7 +23,8 @@
     "password_too_short": "La contraseña debe tener al menos 6 caracteres.",
     "password_changed": "¡Contraseña cambiada con éxito! ✅",
     "password_error": "Error al cambiar la contraseña.",
-    "connection_error": "Error de conexión."
+    "connection_error": "Error de conexión.",
+    "login_required": "Inicia sesión para continuar 🔐"
   },
   "player": {
     "play": "Reproducir",
@@ -33,37 +34,54 @@
     "shuffle": "Aleatorio",
     "repeat": "Repetir"
   },
-  "nav": 
-{ "home": "Inicio", 
-"search": "¿Qué quieres escuchar?", 
-"profile": "Perfil",
-"settings": "Configuración",
-"login": "Entrar",
-"register": "Registrarse" 
-   },
-   
-"home": { 
-"top_songs": "Las más escuchadas",
-"results": "Resultados",
-"no_results": "No se encontraron canciones.",
-"no_songs": "No hay canciones disponibles.",
-"loading": "Cargando canciones...",
-"playlists": "Tus Playlists",
-"no_playlists": "Ninguna playlist aún.",
-"login_playlists": "Entra para ver tus playlists",
-"new_playlist": "Nueva Playlist",
-"playlist_name": "Nombre de la playlist",
-"add_cover": "Agregar portada", "cancel": "Cancelar",
-"create": "Crear", "add_to_playlist": "Agregar a Playlist",
-"no_playlists_created": "Ninguna playlist creada aún.",
-"close": "Cerrar",
-"comments": "Comentarios",
-"no_comments": "Sin comentarios aún.",
-"comment_placeholder": "Comentar...",
-"send": "Enviar",
-"songs": "canciones",
-"song": "canción",
-"delete": "Eliminar",
-"loading_songs": "Cargando canciones..."
-}
-}
+  "nav": {
+    "home": "Inicio",
+    "search": "¿Qué quieres escuchar?",
+    "profile": "Perfil",
+    "settings": "Configuración",
+    "login": "Entrar",
+    "register": "Registrarse"
+  },
+  "home": {
+    "top_songs": "Las más escuchadas",
+    "results": "Resultados",
+    "no_results": "No se encontraron canciones.",
+    "no_songs": "No hay canciones disponibles.",
+    "loading": "Cargando canciones...",
+    "playlists": "Tus Playlists",
+    "no_playlists": "Ninguna playlist aún.",
+    "login_playlists": "Entra para ver tus playlists",
+    "new_playlist": "Nueva Playlist",
+    "playlist_name": "Nombre de la playlist",
+    "add_cover": "Agregar portada",
+    "cancel": "Cancelar",
+    "create": "Crear",
+    "add_to_playlist": "Agregar a Playlist",
+    "no_playlists_created": "Ninguna playlist creada aún.",
+    "close": "Cerrar",
+    "comments": "Comentarios",
+    "no_comments": "Sin comentarios aún.",
+    "comment_placeholder": "Comentar...",
+    "send": "Enviar",
+    "songs": "canciones",
+    "song": "canción",
+    "delete": "Eliminar",
+    "loading_songs": "Cargando canciones...",
+    "col_title": "Título",
+    "col_artist": "Artista",
+    "song_removed": "Canción eliminada de la playlist.",
+    "playlist_deleted": "Playlist eliminada.",
+    "playlist_created": "¡Playlist creada! 🎵",
+    "song_added": "¡Canción añadida a la playlist! ✅",
+    "confirm_delete_playlist": "¿Estás seguro de que quieres eliminar esta playlist?",
+    "remove_song": "Eliminar canción",
+    "like": "Me gusta",
+    "login_to_like": "Inicia sesión para dar me gusta",
+    "login_to_comment": "Inicia sesión para comentar",
+    "download": "Descargar",
+    "login_to_download": "Inicia sesión para descargar",
+    "download_error": "Error al descargar la canción.",
+    "liked_songs": "Canciones que me gustan",
+    "no_liked_songs": "Ninguna canción aún. ¡Haz clic en 👍 para empezar!"
+  }
+} 
