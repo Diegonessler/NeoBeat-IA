@@ -139,7 +139,6 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
   const searchRef = useRef(search);
   const showLikedRef = useRef(showLiked);
   const likedSongsRef = useRef(likedSongs);
-  const [topArtists, setTopArtists] = useState<{ artist: string; plays: number }[]>([]);
 
   useEffect(() => { activePlaylistRef.current = activePlaylist; }, [activePlaylist]);
   useEffect(() => { activePlaylistSongsRef.current = activePlaylistSongs; }, [activePlaylistSongs]);
@@ -223,7 +222,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
   /* Protege ações que exigem login */
   const requireLogin = (action: () => void) => {
     if (!isLoggedIn) {
-      showFeedback(t("messages.login_required") || "Faça login para continuar 🔐");
+      showFeedback(t("messages.login_required"));
       return;
     }
     action();
@@ -447,7 +446,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
      10. DELETAR PLAYLIST INTEIRA
      ============================================================ */
   const handleDeletePlaylist = async (playlistId: string) => {
-    if (!confirm(t("home.confirm_delete_playlist") || "Tem certeza que quer deletar esta playlist?")) return;
+    if (!confirm(t("home.confirm_delete_playlist"))) return;
     try {
       const res = await fetch(`/api/playlists/${playlistId}`, {
         method: "DELETE",
@@ -456,7 +455,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
       if (res.ok) {
         setPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
         closePlaylist();
-        showFeedback(t("home.playlist_deleted") || "Playlist deletada.");
+        showFeedback(t("home.playlist_deleted"));
       }
     } catch (err) {
       console.error("Erro ao deletar playlist:", err);
@@ -475,10 +474,10 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
       });
       if (res.ok) {
         setActivePlaylistSongs((prev) => prev.filter((s: Song) => s.id !== song.id));
-        showFeedback(t("home.song_removed") || "Música removida da playlist.");
+        showFeedback(t("home.song_removed"));
       } else {
         const data = await res.json();
-        showFeedback(data.error || "Erro ao remover música.");
+        showFeedback(data.error || t("home.song_removed"));
       }
     } catch (err) {
       console.error("Erro ao remover música:", err);
@@ -515,10 +514,10 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
         });
       }
       const created = await res.json();
-      if (!res.ok) { showFeedback(created.error || "Erro ao criar playlist"); return; }
+      if (!res.ok) { showFeedback(created.error || t("home.playlist_created")); return; }
       setPlaylists((prev) => [created, ...prev]);
       closeCreateModal();
-      showFeedback(t("home.playlist_created") || "Playlist criada! 🎵");
+      showFeedback(t("home.playlist_created"));
     } catch (err) {
       console.error("Erro ao criar playlist:", err);
     }
@@ -532,9 +531,9 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
         body: JSON.stringify({ song_id: songId }),
       });
       const data = await res.json();
-      if (!res.ok) { showFeedback(data.error || "Erro ao adicionar música"); return; }
+      if (!res.ok) { showFeedback(data.error || t("home.song_added")); return; }
       setShowAddToPlaylist(null);
-      showFeedback(t("home.song_added") || "Música adicionada à playlist! ✅");
+      showFeedback(t("home.song_added"));
     } catch (err) {
       console.error("Erro ao adicionar à playlist:", err);
     }
@@ -588,7 +587,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
       });
       const data = await res.json();
       if (!res.ok) {
-        showFeedback(data.error || "Erro ao comentar");
+        showFeedback(data.error || t("home.comments"));
         return;
       }
       setNewComment("");
@@ -614,7 +613,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
       });
       const data = await res.json();
       if (!res.ok) {
-        showFeedback(data.error || "Erro ao curtir música");
+        showFeedback(data.error || t("home.like"));
         return;
       }
 
@@ -631,7 +630,6 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
           : null
       );
 
-      // Atualiza a playlist de curtidas em tempo real
       setLikedSongs(prev =>
         data.liked
           ? [songSnapshot, ...prev.filter(s => s.id !== songSnapshot.id)]
@@ -664,7 +662,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
       window.URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Erro ao baixar música:", err);
-      showFeedback(t("home.download_error") || "Erro ao baixar música.");
+      showFeedback(t("home.download_error"));
     }
   };
 
@@ -747,7 +745,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
                 style={{ cursor: "pointer" }}
               >
                 <span className="playlist-icon">❤️</span>
-                Músicas Curtidas
+                {t("home.liked_songs")}
                 <span style={{ marginLeft: "auto", fontSize: 11, color: "#aaa" }}>
                   {likedSongs.length}
                 </span>
@@ -810,10 +808,10 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
               </div>
               <div className="playlist-view-info">
                 <span className="playlist-view-label">Playlist</span>
-                <h1 className="playlist-view-title">Músicas Curtidas</h1>
+                <h1 className="playlist-view-title">{t("home.liked_songs")}</h1>
                 <span className="playlist-view-count">
                   {likedSongs.length}{" "}
-                  {likedSongs.length === 1 ? t("home.song") || "música" : t("home.songs") || "músicas"}
+                  {likedSongs.length === 1 ? t("home.song") : t("home.songs")}
                 </span>
               </div>
             </div>
@@ -829,15 +827,15 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
 
             {likedSongs.length === 0 ? (
               <p style={{ color: "#b3b3b3", padding: "20px" }}>
-                Nenhuma música curtida ainda. Clique em 👍 para começar!
+                {t("home.no_liked_songs")}
               </p>
             ) : (
               <table className="playlist-songs-table">
                 <thead>
                   <tr>
                     <th>#</th>
-                    <th>{t("home.col_title") || "Título"}</th>
-                    <th>{t("home.col_artist") || "Artista"}</th>
+                    <th>{t("home.col_title")}</th>
+                    <th>{t("home.col_artist")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -991,9 +989,6 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
           </div>
         )}
       </main>
-
-
-      
 
       {/* SIDEBAR DIREITA */}
       <aside className="sidebar-right">

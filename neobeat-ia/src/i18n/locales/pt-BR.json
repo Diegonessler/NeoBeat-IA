@@ -15,7 +15,16 @@
     "confirm_password": "Confirmar nova senha",
     "save_password": "Salvar senha",
     "saving": "Salvando...",
-    "logout": "Sair da conta"
+    "logout": "Sair da conta",
+    "import_song": "Importar Música",
+    "song_title": "Título da música",
+    "song_artist": "Artista",
+    "song_genre": "Gênero",
+    "choose_mp3": "Escolher MP3",
+    "choose_cover": "Escolher capa",
+    "lyrics_placeholder": "Cole a letra da música aqui...",
+    "import_song_button": "Importar Música",
+    "importing": "Importando..."
   },
   "messages": {
     "fill_all_fields": "Preencha todos os campos.",
@@ -24,7 +33,9 @@
     "password_changed": "Senha alterada com sucesso! ✅",
     "password_error": "Erro ao alterar senha.",
     "connection_error": "Erro de conexão.",
-    "login_required": "Faça login para continuar 🔐"
+    "login_required": "Faça login para continuar 🔐",
+    "song_imported": "Música importada com sucesso! 🎵",
+    "song_import_error": "Erro ao importar música."
   },
   "player": {
     "play": "Reproduzir",

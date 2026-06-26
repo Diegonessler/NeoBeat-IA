@@ -15,7 +15,16 @@
     "confirm_password": "Confirm new password",
     "save_password": "Save password",
     "saving": "Saving...",
-    "logout": "Log out"
+    "logout": "Log out",
+    "import_song": "Import Song",
+    "song_title": "Song title",
+    "song_artist": "Artist",
+    "song_genre": "Genre",
+    "choose_mp3": "Choose MP3",
+    "choose_cover": "Choose cover",
+    "lyrics_placeholder": "Paste the song lyrics here...",
+    "import_song_button": "Import Song",
+    "importing": "Importing..."
   },
   "messages": {
     "fill_all_fields": "Please fill in all fields.",
@@ -24,7 +33,9 @@
     "password_changed": "Password changed successfully! ✅",
     "password_error": "Error changing password.",
     "connection_error": "Connection error.",
-    "login_required": "Please log in to continue 🔐"
+    "login_required": "Please log in to continue 🔐",
+    "song_imported": "Song imported successfully! 🎵",
+    "song_import_error": "Error importing song."
   },
   "player": {
     "play": "Play",

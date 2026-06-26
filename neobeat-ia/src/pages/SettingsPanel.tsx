@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import i18n from "../i18n/index";
 
 interface SettingsPanelProps {
@@ -7,7 +7,6 @@ interface SettingsPanelProps {
   onLogout?: () => void;
 }
 
-type AudioQuality = "low" | "normal" | "high" | "lossless";
 type Language = "pt-BR" | "en-US" | "es-ES";
 type Theme = "dark" | "light";
 
@@ -32,13 +31,6 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
   const t = (key: string) => i18n.t(key);
 
-  const QUALITY_LABELS: Record<AudioQuality, string> = {
-    low: t("audio.low"),
-    normal: t("audio.normal"),
-    high: t("audio.high"),
-    lossless: t("audio.lossless"),
-  };
-
   const [theme, setTheme] = useState<Theme>(() => {
     return (localStorage.getItem("theme") as Theme) || "dark";
   });
@@ -47,7 +39,17 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     return (localStorage.getItem("language") as Language) || "pt-BR";
   });
 
-  const [quality, setQuality] = useState<AudioQuality>("high");
+  const [songTitle, setSongTitle] = useState("");
+  const [songArtist, setSongArtist] = useState("");
+  const [songGenre, setSongGenre] = useState("");
+  const [mp3File, setMp3File] = useState<File | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const [lyrics, setLyrics] = useState("");
+  const [importingSong, setImportingSong] = useState(false);
+  const [importMsg, setImportMsg] = useState<{ text: string; ok: boolean } | null>(null);
+  const mp3InputRef = useRef<HTMLInputElement>(null);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPass, setConfirmPass] = useState("");
@@ -67,6 +69,69 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
     void i18n.changeLanguage(lang);
   };
 
+  const handleMp3Select = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setMp3File(file);
+  };
+
+  const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] ?? null;
+    setCoverFile(file);
+    if (coverPreview) URL.revokeObjectURL(coverPreview);
+    setCoverPreview(file ? URL.createObjectURL(file) : null);
+  };
+
+  const handleImportSong = async () => {
+    if (!songTitle || !songArtist || !mp3File || !coverFile || !lyrics) {
+      setImportMsg({ text: t("messages.fill_all_fields"), ok: false });
+      return;
+    }
+
+    setImportingSong(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("title", songTitle);
+      formData.append("artist", songArtist);
+      formData.append("genre", songGenre);
+      formData.append("mp3", mp3File);
+      formData.append("cover", coverFile);
+      formData.append("lyrics", lyrics);
+
+      const authHeaders = { ...getAuthHeaders() };
+      delete authHeaders["Content-Type"];
+      delete authHeaders["content-type"];
+
+      const res = await fetch("/api/songs/import", {
+        method: "POST",
+        headers: authHeaders,
+        body: formData,
+      });
+
+      const data = await res.json() as { error?: string };
+
+      if (res.ok) {
+        setImportMsg({ text: t("messages.song_imported"), ok: true });
+        setSongTitle("");
+        setSongArtist("");
+        setSongGenre("");
+        setMp3File(null);
+        setCoverFile(null);
+        if (coverPreview) URL.revokeObjectURL(coverPreview);
+        setCoverPreview(null);
+        setLyrics("");
+        if (mp3InputRef.current) mp3InputRef.current.value = "";
+        if (coverInputRef.current) coverInputRef.current.value = "";
+      } else {
+        setImportMsg({ text: data.error ?? t("messages.song_import_error"), ok: false });
+      }
+    } catch {
+      setImportMsg({ text: t("messages.connection_error"), ok: false });
+    } finally {
+      setImportingSong(false);
+      setTimeout(() => setImportMsg(null), 3000);
+    }
+  };
   const handleChangePassword = async () => {
     if (!oldPassword || !newPassword || !confirmPass) {
       setPassMsg({ text: t("messages.fill_all_fields"), ok: false });
@@ -150,12 +215,25 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
         .nb-settings-nav-item.active { background: rgba(0,210,255,.12); color: #00d2ff; }
         .nb-settings-body { flex: 1; padding: 22px; }
         .nb-section-title { margin-bottom: 14px; font-size: 11px; font-weight: 700; letter-spacing: 2px; text-transform: uppercase; color: var(--text-secondary); }
-        .nb-quality-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
-        .nb-quality-pill, .nb-theme-btn { padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-main); cursor: pointer; transition: .15s; }
-        .nb-quality-pill.active, .nb-theme-btn.active { border-color: #00d2ff; color: #00d2ff; }
+        .nb-theme-btn { padding: 12px; border-radius: 12px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-main); cursor: pointer; transition: .15s; }
+        .nb-theme-btn.active { border-color: #00d2ff; color: #00d2ff; }
         .nb-theme-row { display: flex; gap: 10px; margin-bottom: 24px; }
-        .nb-select, .nb-input { width: 100%; padding: 12px 14px; margin-bottom: 12px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-main); box-sizing: border-box; }
-        .nb-select:focus, .nb-input:focus { outline: none; border-color: #00d2ff; }
+        .nb-select, .nb-input, .nb-textarea { width: 100%; padding: 12px 14px; margin-bottom: 12px; border-radius: 10px; border: 1px solid var(--border-color); background: var(--bg-main); color: var(--text-main); box-sizing: border-box; font-family: inherit; }
+        .nb-select:focus, .nb-input:focus, .nb-textarea:focus { outline: none; border-color: #00d2ff; }
+        .nb-textarea { resize: vertical; min-height: 90px; }
+        .nb-input-row { display: flex; gap: 10px; }
+        .nb-input-row .nb-input { flex: 1; }
+        .nb-file-row { display: flex; gap: 12px; margin-bottom: 12px; }
+        .nb-file-drop {
+          flex: 1; padding: 14px 12px; border-radius: 12px; border: 1px dashed var(--border-color);
+          background: var(--bg-main); color: var(--text-secondary); cursor: pointer; transition: .15s;
+          display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; font-size: 12px;
+        }
+        .nb-file-drop:hover { border-color: #00d2ff; color: #00d2ff; }
+        .nb-file-drop.has-file { border-style: solid; border-color: #00d2ff; color: var(--text-main); }
+        .nb-file-drop-icon { font-size: 20px; }
+        .nb-file-drop-name { font-weight: 600; word-break: break-all; max-width: 100%; }
+        .nb-cover-preview { width: 100%; height: 64px; object-fit: cover; border-radius: 8px; }
         .nb-btn-primary { width: 100%; padding: 12px; border: none; border-radius: 10px; background: linear-gradient(135deg, #00d2ff, #0077ff); color: white; font-weight: 700; cursor: pointer; }
         .nb-btn-primary:disabled { opacity: .5; cursor: not-allowed; }
         .nb-pass-msg { margin-top: 12px; padding: 10px; border-radius: 10px; text-align: center; font-size: 13px; }
@@ -191,18 +269,91 @@ const SettingsPanel: React.FC<SettingsPanelProps> = ({
 
               {activeSection === "audio" && (
                 <>
-                  <p className="nb-section-title">{t("settings.streaming_quality")}</p>
-                  <div className="nb-quality-grid">
-                    {(Object.keys(QUALITY_LABELS) as AudioQuality[]).map((q) => (
-                      <button
-                        key={q}
-                        className={`nb-quality-pill ${quality === q ? "active" : ""}`}
-                        onClick={() => setQuality(q)}
-                      >
-                        {QUALITY_LABELS[q]}
-                      </button>
-                    ))}
+                  <p className="nb-section-title">{t("settings.import_song")}</p>
+
+                  <input
+                    type="text"
+                    className="nb-input"
+                    placeholder={t("settings.song_title")}
+                    value={songTitle}
+                    onChange={(e) => setSongTitle(e.target.value)}
+                  />
+
+                  <div className="nb-input-row">
+                    <input
+                      type="text"
+                      className="nb-input"
+                      placeholder={t("settings.song_artist")}
+                      value={songArtist}
+                      onChange={(e) => setSongArtist(e.target.value)}
+                    />
+                    <input
+                      type="text"
+                      className="nb-input"
+                      placeholder={t("settings.song_genre")}
+                      value={songGenre}
+                      onChange={(e) => setSongGenre(e.target.value)}
+                    />
                   </div>
+
+                  <div className="nb-file-row">
+                    <input
+                      ref={mp3InputRef}
+                      type="file"
+                      accept="audio/mpeg,.mp3"
+                      style={{ display: "none" }}
+                      onChange={handleMp3Select}
+                    />
+                    <button
+                      type="button"
+                      className={`nb-file-drop ${mp3File ? "has-file" : ""}`}
+                      onClick={() => mp3InputRef.current?.click()}
+                    >
+                      <span className="nb-file-drop-icon">🎵</span>
+                      <span className="nb-file-drop-name">
+                        {mp3File ? mp3File.name : t("settings.choose_mp3")}
+                      </span>
+                    </button>
+
+                    <input
+                      ref={coverInputRef}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: "none" }}
+                      onChange={handleCoverSelect}
+                    />
+                    <button
+                      type="button"
+                      className={`nb-file-drop ${coverFile ? "has-file" : ""}`}
+                      onClick={() => coverInputRef.current?.click()}
+                    >
+                      {coverPreview ? (
+                        <img src={coverPreview} alt="" className="nb-cover-preview" />
+                      ) : (
+                        <span className="nb-file-drop-icon">🖼️</span>
+                      )}
+                      <span className="nb-file-drop-name">
+                        {coverFile ? coverFile.name : t("settings.choose_cover")}
+                      </span>
+                    </button>
+                  </div>
+
+                  <textarea
+                    className="nb-textarea"
+                    placeholder={t("settings.lyrics_placeholder")}
+                    value={lyrics}
+                    onChange={(e) => setLyrics(e.target.value)}
+                  />
+
+                  <button className="nb-btn-primary" onClick={handleImportSong} disabled={importingSong}>
+                    {importingSong ? t("settings.importing") : t("settings.import_song_button")}
+                  </button>
+
+                  {importMsg && (
+                    <div className={`nb-pass-msg ${importMsg.ok ? "ok" : "err"}`}>
+                      {importMsg.text}
+                    </div>
+                  )}
                 </>
               )}
 

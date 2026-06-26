@@ -15,7 +15,16 @@
     "confirm_password": "Confirmar nueva contraseña",
     "save_password": "Guardar contraseña",
     "saving": "Guardando...",
-    "logout": "Cerrar sesión"
+    "logout": "Cerrar sesión",
+    "import_song": "Importar Canción",
+    "song_title": "Título de la canción",
+    "song_artist": "Artista",
+    "song_genre": "Género",
+    "choose_mp3": "Elegir MP3",
+    "choose_cover": "Elegir portada",
+    "lyrics_placeholder": "Pega aquí la letra de la canción...",
+    "import_song_button": "Importar Canción",
+    "importing": "Importando..."
   },
   "messages": {
     "fill_all_fields": "Completa todos los campos.",
@@ -24,7 +33,9 @@
     "password_changed": "¡Contraseña cambiada con éxito! ✅",
     "password_error": "Error al cambiar la contraseña.",
     "connection_error": "Error de conexión.",
-    "login_required": "Inicia sesión para continuar 🔐"
+    "login_required": "Inicia sesión para continuar 🔐",
+    "song_imported": "¡Canción importada con éxito! 🎵",
+    "song_import_error": "Error al importar la canción."
   },
   "player": {
     "play": "Reproducir",
@@ -84,4 +95,4 @@
     "liked_songs": "Canciones que me gustan",
     "no_liked_songs": "Ninguna canción aún. ¡Haz clic en 👍 para empezar!"
   }
-} 
+}
