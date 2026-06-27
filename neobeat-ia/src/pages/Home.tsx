@@ -44,17 +44,11 @@ interface PlaylistSong {
   songs: Song;
 }
 
-/* ============================================================
-   PROPS
-   ============================================================ */
 interface HomeProps {
   goToLogin: () => void;
   goToRegister: () => void;
 }
 
-/* ============================================================
-   2. HELPER — token do localStorage
-   ============================================================ */
 const getAuthHeaders = (): Record<string, string> => {
   const token = localStorage.getItem("neobeat_token");
   const headers: Record<string, string> = { "Content-Type": "application/json" };
@@ -64,18 +58,10 @@ const getAuthHeaders = (): Record<string, string> => {
 
 const getAuthToken = (): string | null => localStorage.getItem("neobeat_token");
 
-/* ============================================================
-   3. COMPONENTE PRINCIPAL
-   ============================================================ */
 const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
 
-  /* ---- Hook de tradução — conecta o Home ao i18n ---- */
   const t = useI18n();
-
-  /* ---- Estado de autenticação ---- */
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem("neobeat_token"));
-
-  /* ---- States gerais ---- */
   const [songs, setSongs] = useState<Song[]>([]);
   const [topSongs, setTopSongs] = useState<Song[]>([]);
   const [filteredSongs, setFilteredSongs] = useState<Song[]>([]);
@@ -83,12 +69,13 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
   const [search, setSearch] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
-  /* ---- Refs de áudio e UI ---- */
   const scrollRef = useRef<HTMLDivElement>(null);
+  const scrollArtistsRef = useRef<HTMLDivElement>(null);
+  const scrollPlaylistsRef = useRef<HTMLDivElement>(null);
+  const scrollRecentRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
-  /* ---- States do player ---- */
   const [isPlaying, setIsPlaying] = useState(false);
   const [progress, setProgress] = useState(0);
   const [currentTime, setCurrentTime] = useState("0:00");
@@ -97,7 +84,6 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
   const [isShuffle, setIsShuffle] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
 
-  /* ---- States de playlist ---- */
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
@@ -106,28 +92,19 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
   const [showAddToPlaylist, setShowAddToPlaylist] = useState<number | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
-  /* ---- Estado da tela de playlist aberta ---- */
   const [activePlaylist, setActivePlaylist] = useState<Playlist | null>(null);
   const [activePlaylistSongs, setActivePlaylistSongs] = useState<Song[]>([]);
   const [loadingPlaylistSongs, setLoadingPlaylistSongs] = useState(false);
 
-  /* ---- States da playlist de curtidas ---- */
   const [likedSongs, setLikedSongs] = useState<Song[]>([]);
   const [showLiked, setShowLiked] = useState(false);
-
-  /* ---- States dos painéis ---- */
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-
-  /* ---- States de comentários ---- */
   const [showCommentsModal, setShowCommentsModal] = useState(false);
   const [comments, setComments] = useState<any[]>([]);
   const [newComment, setNewComment] = useState("");
   const [isLiking, setIsLiking] = useState(false);
 
-  /* ============================================================
-     REFS para evitar closure stale nos callbacks do player
-     ============================================================ */
   const activePlaylistRef = useRef(activePlaylist);
   const activePlaylistSongsRef = useRef(activePlaylistSongs);
   const currentSongRef = useRef(currentSong);
@@ -152,28 +129,22 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
   useEffect(() => { showLikedRef.current = showLiked; }, [showLiked]);
   useEffect(() => { likedSongsRef.current = likedSongs; }, [likedSongs]);
 
-  /* ============================================================
-     4. RENOVAR SESSÃO AO CARREGAR A PÁGINA
-     ============================================================ */
   useEffect(() => {
     const refreshSession = async () => {
       const refresh_token = localStorage.getItem("neobeat_refresh_token");
       if (!refresh_token) return;
-
       try {
         const res = await fetch("/auth/refresh", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ refresh_token }),
         });
-
         if (!res.ok) {
           localStorage.removeItem("neobeat_token");
           localStorage.removeItem("neobeat_refresh_token");
           setIsLoggedIn(false);
           return;
         }
-
         const data = await res.json();
         localStorage.setItem("neobeat_token", data.session.access_token);
         localStorage.setItem("neobeat_refresh_token", data.session.refresh_token);
@@ -182,13 +153,9 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
         console.error("Erro ao renovar sessão:", err);
       }
     };
-
     refreshSession();
   }, []);
 
-  /* ============================================================
-     5. FUNÇÕES AUXILIARES
-     ============================================================ */
   const formatTime = (time: number) => {
     if (isNaN(time)) return "0:00";
     const minutes = Math.floor(time / 60);
@@ -219,12 +186,8 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
     setTimeout(() => setFeedbackMsg(null), 2500);
   };
 
-  /* Protege ações que exigem login */
   const requireLogin = (action: () => void) => {
-    if (!isLoggedIn) {
-      showFeedback(t("messages.login_required"));
-      return;
-    }
+    if (!isLoggedIn) { showFeedback(t("messages.login_required")); return; }
     action();
   };
 
@@ -235,9 +198,6 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
     setNewPlaylistCoverPreview(null);
   };
 
-  /* ============================================================
-     6. CONTROLE DO PLAYER
-     ============================================================ */
   const togglePlay = () => {
     if (!audioRef.current) return;
     if (isPlaying) audioRef.current.pause();
@@ -273,20 +233,11 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
   const playNext = () => {
     const song = currentSongRef.current;
     let list: Song[];
-
-    if (showLikedRef.current) {
-      list = likedSongsRef.current;
-    } else if (activePlaylistRef.current) {
-      list = activePlaylistSongsRef.current;
-    } else {
-      list = getDisplayListRef();
-    }
-
+    if (showLikedRef.current) list = likedSongsRef.current;
+    else if (activePlaylistRef.current) list = activePlaylistSongsRef.current;
+    else list = getDisplayListRef();
     if (!song || list.length === 0) return;
-    if (isShuffleRef.current) {
-      handlePlay(list[Math.floor(Math.random() * list.length)]);
-      return;
-    }
+    if (isShuffleRef.current) { handlePlay(list[Math.floor(Math.random() * list.length)]); return; }
     const idx = list.findIndex((s) => s.id === song.id);
     handlePlay(list[(idx + 1) % list.length]);
   };
@@ -294,15 +245,9 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
   const playPrev = () => {
     const song = currentSongRef.current;
     let list: Song[];
-
-    if (showLikedRef.current) {
-      list = likedSongsRef.current;
-    } else if (activePlaylistRef.current) {
-      list = activePlaylistSongsRef.current;
-    } else {
-      list = getDisplayListRef();
-    }
-
+    if (showLikedRef.current) list = likedSongsRef.current;
+    else if (activePlaylistRef.current) list = activePlaylistSongsRef.current;
+    else list = getDisplayListRef();
     if (!song || list.length === 0) return;
     const idx = list.findIndex((s) => s.id === song.id);
     handlePlay(list[(idx - 1 + list.length) % list.length]);
@@ -317,9 +262,6 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
     }
   };
 
-  /* ============================================================
-     7. BUSCAR DADOS DA API
-     ============================================================ */
   useEffect(() => {
     const fetchData = async () => {
       setIsLoading(true);
@@ -328,25 +270,17 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
           fetch("/api/songs"),
           fetch("/api/rankings/top-songs"),
         ]);
-
         const songsData = await resSongs.json();
         setSongs(songsData || []);
         setFilteredSongs(songsData || []);
-
         if (resTop.ok) setTopSongs((await resTop.json()) || []);
-
         if (isLoggedIn) {
           const [resPlaylists, resLiked] = await Promise.all([
             fetch("/api/playlists", { headers: getAuthHeaders() }),
             fetch("/api/playlists/liked", { headers: getAuthHeaders() }),
           ]);
-
           if (resPlaylists.ok) setPlaylists((await resPlaylists.json()) || []);
-
-          if (resLiked.ok) {
-            const likedData = await resLiked.json();
-            setLikedSongs(likedData);
-          }
+          if (resLiked.ok) setLikedSongs((await resLiked.json()) || []);
         }
       } catch (err) {
         console.error("Erro ao buscar dados:", err);
@@ -357,23 +291,15 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
     fetchData();
   }, [isLoggedIn]);
 
-  /* ============================================================
-     8. TOCAR MÚSICA
-     ============================================================ */
   const handlePlay = async (song: Song) => {
     setCurrentSong(song);
     setIsPlaying(true);
     setProgress(0);
     setCurrentTime("0:00");
     setDuration("0:00");
-
     setTimeout(() => {
-      if (audioRef.current) {
-        audioRef.current.play();
-        setIsPlaying(true);
-      }
+      if (audioRef.current) { audioRef.current.play(); setIsPlaying(true); }
     }, 0);
-
     try {
       const [lyricsRes, likesRes, commentsRes, playsRes] = await Promise.all([
         fetch(`/api/songs/${song.id}/lyrics`),
@@ -381,50 +307,26 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
         fetch(`/api/songs/${song.id}/comments`),
         fetch(`/api/songs/${song.id}/plays`),
       ]);
-
       const [lyricsData, likesData, commentsData, playsData] = await Promise.all([
-        lyricsRes.json(),
-        likesRes.json(),
-        commentsRes.json(),
-        playsRes.json(),
+        lyricsRes.json(), likesRes.json(), commentsRes.json(), playsRes.json(),
       ]);
-
       setCurrentSong(prev =>
-        prev
-          ? {
-              ...prev,
-              lyrics: lyricsData.lyrics,
-              like_count: likesData.count,
-              comment_count: commentsData.length,
-              play_count: playsData.count,
-            }
-          : null
+        prev ? { ...prev, lyrics: lyricsData.lyrics, like_count: likesData.count, comment_count: commentsData.length, play_count: playsData.count } : null
       );
-
       if (isLoggedIn) {
-        await fetch("/api/stats/play", {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ song_id: song.id }),
-        });
+        await fetch("/api/stats/play", { method: "POST", headers: getAuthHeaders(), body: JSON.stringify({ song_id: song.id }) });
       }
-
     } catch (err) {
       console.error("Erro no handlePlay:", err);
     }
   };
 
-  /* ============================================================
-     9. ABRIR PLAYLIST
-     ============================================================ */
   const openPlaylist = async (pl: Playlist) => {
     setActivePlaylist(pl);
     setShowLiked(false);
     setLoadingPlaylistSongs(true);
     try {
-      const res = await fetch(`/api/playlists/${pl.id}/songs`, {
-        headers: getAuthHeaders(),
-      });
+      const res = await fetch(`/api/playlists/${pl.id}/songs`, { headers: getAuthHeaders() });
       if (res.ok) {
         const data: PlaylistSong[] = await res.json();
         setActivePlaylistSongs(data.map((ps) => ps.songs));
@@ -442,36 +344,20 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
     setShowLiked(false);
   };
 
-  /* ============================================================
-     10. DELETAR PLAYLIST INTEIRA
-     ============================================================ */
   const handleDeletePlaylist = async (playlistId: string) => {
     if (!confirm(t("home.confirm_delete_playlist"))) return;
     try {
-      const res = await fetch(`/api/playlists/${playlistId}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
-      if (res.ok) {
-        setPlaylists((prev) => prev.filter((p) => p.id !== playlistId));
-        closePlaylist();
-        showFeedback(t("home.playlist_deleted"));
-      }
+      const res = await fetch(`/api/playlists/${playlistId}`, { method: "DELETE", headers: getAuthHeaders() });
+      if (res.ok) { setPlaylists((prev) => prev.filter((p) => p.id !== playlistId)); closePlaylist(); showFeedback(t("home.playlist_deleted")); }
     } catch (err) {
       console.error("Erro ao deletar playlist:", err);
     }
   };
 
-  /* ============================================================
-     11. REMOVER MÚSICA DA PLAYLIST
-     ============================================================ */
   const handleRemoveSongFromPlaylist = async (song: Song) => {
     if (!activePlaylist) return;
     try {
-      const res = await fetch(`/api/playlists/${activePlaylist.id}/songs/${song.id}`, {
-        method: "DELETE",
-        headers: getAuthHeaders(),
-      });
+      const res = await fetch(`/api/playlists/${activePlaylist.id}/songs/${song.id}`, { method: "DELETE", headers: getAuthHeaders() });
       if (res.ok) {
         setActivePlaylistSongs((prev) => prev.filter((s: Song) => s.id !== song.id));
         showFeedback(t("home.song_removed"));
@@ -484,9 +370,6 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
     }
   };
 
-  /* ============================================================
-     12. FUNÇÕES DE CRIAR PLAYLIST
-     ============================================================ */
   const handleCoverChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -507,11 +390,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
         if (token) headers["Authorization"] = `Bearer ${token}`;
         res = await fetch("/api/playlists", { method: "POST", headers, body: formData });
       } else {
-        res = await fetch("/api/playlists", {
-          method: "POST",
-          headers: getAuthHeaders(),
-          body: JSON.stringify({ name: newPlaylistName.trim() }),
-        });
+        res = await fetch("/api/playlists", { method: "POST", headers: getAuthHeaders(), body: JSON.stringify({ name: newPlaylistName.trim() }) });
       }
       const created = await res.json();
       if (!res.ok) { showFeedback(created.error || t("home.playlist_created")); return; }
@@ -525,11 +404,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
 
   const handleAddToPlaylist = async (playlistId: string, songId: number) => {
     try {
-      const res = await fetch(`/api/playlists/${playlistId}/songs`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ song_id: songId }),
-      });
+      const res = await fetch(`/api/playlists/${playlistId}/songs`, { method: "POST", headers: getAuthHeaders(), body: JSON.stringify({ song_id: songId }) });
       const data = await res.json();
       if (!res.ok) { showFeedback(data.error || t("home.song_added")); return; }
       setShowAddToPlaylist(null);
@@ -539,28 +414,20 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
     }
   };
 
-  /* ============================================================
-     13. FILTRO DE BUSCA
-     ============================================================ */
   useEffect(() => {
     const term = search.toLowerCase();
-    setFilteredSongs(
-      songs.filter(
-        (s) =>
-          s.title?.toLowerCase().includes(term) ||
-          s.artist?.toLowerCase().includes(term) ||
-          s.genre?.toLowerCase().includes(term)
-      )
-    );
+    setFilteredSongs(songs.filter(s =>
+      s.title?.toLowerCase().includes(term) ||
+      s.artist?.toLowerCase().includes(term) ||
+      s.genre?.toLowerCase().includes(term)
+    ));
   }, [search, songs]);
 
-  const scrollRow = (dir: "left" | "right") => {
-    scrollRef.current?.scrollBy({ left: dir === "right" ? 300 : -300, behavior: "smooth" });
+  const scrollRow = (dir: "left" | "right", ref?: React.RefObject<HTMLDivElement | null>) => {
+    const target = ref?.current ?? scrollRef.current;
+    target?.scrollBy({ left: dir === "right" ? 300 : -300, behavior: "smooth" });
   };
 
-  /* ============================================================
-     14. COMENTÁRIOS (modal)
-     ============================================================ */
   const loadComments = async (songId: number) => {
     try {
       const res = await fetch(`/api/songs/${songId}/comments`);
@@ -580,62 +447,27 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
   const handleSendComment = async () => {
     if (!currentSong || !newComment.trim()) return;
     try {
-      const res = await fetch(`/api/songs/${currentSong.id}/comments`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify({ content: newComment.trim() }),
-      });
+      const res = await fetch(`/api/songs/${currentSong.id}/comments`, { method: "POST", headers: getAuthHeaders(), body: JSON.stringify({ content: newComment.trim() }) });
       const data = await res.json();
-      if (!res.ok) {
-        showFeedback(data.error || t("home.comments"));
-        return;
-      }
+      if (!res.ok) { showFeedback(data.error || t("home.comments")); return; }
       setNewComment("");
       await loadComments(currentSong.id);
-      setCurrentSong((prev) =>
-        prev ? { ...prev, comment_count: (prev.comment_count ?? 0) + 1 } : null
-      );
+      setCurrentSong((prev) => prev ? { ...prev, comment_count: (prev.comment_count ?? 0) + 1 } : null);
     } catch (err) {
       console.error("Erro ao comentar:", err);
     }
   };
 
-  /* ============================================================
-     15. CURTIR MÚSICA
-     ============================================================ */
   const handleLikeSong = async () => {
     if (!currentSong || isLiking) return;
     try {
       setIsLiking(true);
-      const res = await fetch(`/api/songs/${currentSong.id}/like`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-      });
+      const res = await fetch(`/api/songs/${currentSong.id}/like`, { method: "POST", headers: getAuthHeaders() });
       const data = await res.json();
-      if (!res.ok) {
-        showFeedback(data.error || t("home.like"));
-        return;
-      }
-
+      if (!res.ok) { showFeedback(data.error || t("home.like")); return; }
       const songSnapshot = currentSong;
-
-      setCurrentSong((prev) =>
-        prev
-          ? {
-              ...prev,
-              like_count: data.liked
-                ? (prev.like_count ?? 0) + 1
-                : Math.max((prev.like_count ?? 0) - 1, 0),
-            }
-          : null
-      );
-
-      setLikedSongs(prev =>
-        data.liked
-          ? [songSnapshot, ...prev.filter(s => s.id !== songSnapshot.id)]
-          : prev.filter(s => s.id !== songSnapshot.id)
-      );
-
+      setCurrentSong((prev) => prev ? { ...prev, like_count: data.liked ? (prev.like_count ?? 0) + 1 : Math.max((prev.like_count ?? 0) - 1, 0) } : null);
+      setLikedSongs(prev => data.liked ? [songSnapshot, ...prev.filter(s => s.id !== songSnapshot.id)] : prev.filter(s => s.id !== songSnapshot.id));
     } catch (err) {
       console.error("Erro ao curtir música:", err);
     } finally {
@@ -643,9 +475,6 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
     }
   };
 
-  /* ============================================================
-     16. DOWNLOAD MÚSICA
-     ============================================================ */
   const handleDownloadSong = async () => {
     if (!currentSong) return;
     try {
@@ -666,9 +495,6 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
     }
   };
 
-  /* ============================================================
-     17. LOGOUT — limpa tudo e navega via prop
-     ============================================================ */
   const handleLogout = () => {
     localStorage.removeItem("neobeat_token");
     localStorage.removeItem("neobeat_refresh_token");
@@ -682,10 +508,37 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
     setShowProfile(false);
   };
 
-  /* ============================================================
-     18. RENDER
-     ============================================================ */
+  const SongCard = ({ song }: { song: Song }) => (
+    <div
+      className={`spotify-card${currentSong?.id === song.id ? " playing" : ""}`}
+      onClick={() => handlePlay(song)}
+    >
+      <div className="img-container">
+        <img src={formatUrl(song.cover_url)} alt={song.title} />
+        {isLoggedIn && (
+          <button
+            className="btn-add-to-playlist"
+            onClick={(e) => { e.stopPropagation(); setShowAddToPlaylist(song.id); }}
+            title={t("home.add_to_playlist")}
+          >+</button>
+        )}
+      </div>
+      <div className="card-info">
+        <strong>{song.title}</strong>
+        <p>{song.artist}</p>
+      </div>
+    </div>
+  );
+
   const displayList = getDisplayList();
+
+  // Fix TypeScript: usar forEach ao invés de Map constructor
+  const artistMap = new Map<string, Song>();
+  songs.forEach(s => { if (!artistMap.has(s.artist)) artistMap.set(s.artist, s); });
+  const uniqueArtists: Song[] = [...artistMap.values()];
+
+  const uniqueGenres: string[] = [...new Set(songs.map(s => s.genre).filter((g): g is string => Boolean(g)))];
+  const recentSongs = [...songs].reverse().slice(0, 10);
 
   return (
     <div className="spotify-layout">
@@ -694,12 +547,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
       <header className="top-bar">
         <div className="top-bar-left">NeoBeat-IA</div>
         <div className="top-bar-center">
-          <input
-            type="text"
-            placeholder={t("nav.search")}
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <input type="text" placeholder={t("nav.search")} value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
         <div className="top-bar-right">
           {isLoggedIn ? (
@@ -718,27 +566,16 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
 
       {/* SIDEBAR ESQUERDA */}
       <aside className="sidebar-left">
-        <div
-          className={`menu-item${!activePlaylist && !showLiked ? " active" : ""}`}
-          onClick={closePlaylist}
-          style={{ cursor: "pointer" }}
-        >
+        <div className={`menu-item${!activePlaylist && !showLiked ? " active" : ""}`} onClick={closePlaylist} style={{ cursor: "pointer" }}>
           {t("nav.home")}
         </div>
-
         <div className="sidebar-section">
           {isLoggedIn ? (
             <>
               <div className="sidebar-section-header">
                 <span>{t("home.playlists")}</span>
-                <button
-                  className="btn-add-playlist"
-                  onClick={() => setShowCreateModal(true)}
-                  title={t("home.new_playlist")}
-                >+</button>
+                <button className="btn-add-playlist" onClick={() => setShowCreateModal(true)} title={t("home.new_playlist")}>+</button>
               </div>
-
-              {/* ❤️ Playlist fixa de músicas curtidas */}
               <div
                 className={`menu-item playlist-item${showLiked ? " active" : ""}`}
                 onClick={() => { setShowLiked(true); setActivePlaylist(null); setActivePlaylistSongs([]); }}
@@ -746,15 +583,9 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
               >
                 <span className="playlist-icon">❤️</span>
                 {t("home.liked_songs")}
-                <span style={{ marginLeft: "auto", fontSize: 11, color: "#aaa" }}>
-                  {likedSongs.length}
-                </span>
+                <span style={{ marginLeft: "auto", fontSize: 11, color: "#aaa" }}>{likedSongs.length}</span>
               </div>
-
-              {playlists.length === 0 && (
-                <p className="sidebar-empty">{t("home.no_playlists")}</p>
-              )}
-
+              {playlists.length === 0 && <p className="sidebar-empty">{t("home.no_playlists")}</p>}
               {playlists.map((pl) => (
                 <div
                   key={pl.id}
@@ -771,11 +602,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
               ))}
             </>
           ) : (
-            <div
-              className="sidebar-empty"
-              style={{ cursor: "pointer", color: "#00d2ff", padding: "12px 16px", fontSize: 13 }}
-              onClick={() => goToLogin()}
-            >
+            <div className="sidebar-empty" style={{ cursor: "pointer", color: "#00d2ff", padding: "12px 16px", fontSize: 13 }} onClick={() => goToLogin()}>
               🔐 {t("home.login_playlists")}
             </div>
           )}
@@ -785,76 +612,32 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
       {/* CONTEÚDO PRINCIPAL */}
       <main className="main-content">
 
-        {/* ===== VIEW: MÚSICAS CURTIDAS ===== */}
         {showLiked ? (
+          /* ===== VIEW: CURTIDAS ===== */
           <div className="playlist-view">
             <div className="playlist-view-header">
               <div className="playlist-view-cover">
-                <div
-                  className="playlist-view-cover-placeholder"
-                  style={{
-                    fontSize: 64,
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    background: "linear-gradient(135deg, #450a0a 0%, #991b1b 100%)",
-                    borderRadius: 8,
-                    width: "100%",
-                    height: "100%",
-                  }}
-                >
-                  ❤️
-                </div>
+                <div className="playlist-view-cover-placeholder" style={{ fontSize: 64, display: "flex", alignItems: "center", justifyContent: "center", background: "linear-gradient(135deg, #450a0a 0%, #991b1b 100%)", borderRadius: 8, width: "100%", height: "100%" }}>❤️</div>
               </div>
               <div className="playlist-view-info">
                 <span className="playlist-view-label">Playlist</span>
                 <h1 className="playlist-view-title">{t("home.liked_songs")}</h1>
-                <span className="playlist-view-count">
-                  {likedSongs.length}{" "}
-                  {likedSongs.length === 1 ? t("home.song") : t("home.songs")}
-                </span>
+                <span className="playlist-view-count">{likedSongs.length} {likedSongs.length === 1 ? t("home.song") : t("home.songs")}</span>
               </div>
             </div>
-
             <div className="playlist-view-actions">
-              <button
-                className="playlist-play-btn"
-                onClick={() => likedSongs.length > 0 && handlePlay(likedSongs[0])}
-                disabled={likedSongs.length === 0}
-                title={t("player.play")}
-              >▶</button>
+              <button className="playlist-play-btn" onClick={() => likedSongs.length > 0 && handlePlay(likedSongs[0])} disabled={likedSongs.length === 0}>▶</button>
             </div>
-
             {likedSongs.length === 0 ? (
-              <p style={{ color: "#b3b3b3", padding: "20px" }}>
-                {t("home.no_liked_songs")}
-              </p>
+              <p style={{ color: "#b3b3b3", padding: "20px" }}>{t("home.no_liked_songs")}</p>
             ) : (
               <table className="playlist-songs-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>{t("home.col_title")}</th>
-                    <th>{t("home.col_artist")}</th>
-                  </tr>
-                </thead>
+                <thead><tr><th>#</th><th>{t("home.col_title")}</th><th>{t("home.col_artist")}</th></tr></thead>
                 <tbody>
                   {likedSongs.map((song, idx) => (
-                    <tr
-                      key={song.id}
-                      className={`playlist-song-row${currentSong?.id === song.id ? " playing" : ""}`}
-                      onClick={() => handlePlay(song)}
-                    >
-                      <td className="song-num">
-                        {currentSong?.id === song.id
-                          ? <span className="playing-indicator">♫</span>
-                          : idx + 1
-                        }
-                      </td>
-                      <td className="song-title-cell">
-                        <img src={formatUrl(song.cover_url)} className="song-row-thumb" alt={song.title} />
-                        <span>{song.title}</span>
-                      </td>
+                    <tr key={song.id} className={`playlist-song-row${currentSong?.id === song.id ? " playing" : ""}`} onClick={() => handlePlay(song)}>
+                      <td className="song-num">{currentSong?.id === song.id ? <span className="playing-indicator">♫</span> : idx + 1}</td>
+                      <td className="song-title-cell"><img src={formatUrl(song.cover_url)} className="song-row-thumb" alt={song.title} /><span>{song.title}</span></td>
                       <td className="song-artist-cell">{song.artist}</td>
                     </tr>
                   ))}
@@ -864,7 +647,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
           </div>
 
         ) : activePlaylist ? (
-          /* ===== VIEW: PLAYLIST CRIADA ===== */
+          /* ===== VIEW: PLAYLIST ===== */
           <div className="playlist-view">
             <div className="playlist-view-header">
               <div className="playlist-view-cover">
@@ -876,66 +659,28 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
               <div className="playlist-view-info">
                 <span className="playlist-view-label">Playlist</span>
                 <h1 className="playlist-view-title">{activePlaylist.name}</h1>
-                <span className="playlist-view-count">
-                  {activePlaylistSongs.length}{" "}
-                  {activePlaylistSongs.length === 1 ? t("home.song") : t("home.songs")}
-                </span>
+                <span className="playlist-view-count">{activePlaylistSongs.length} {activePlaylistSongs.length === 1 ? t("home.song") : t("home.songs")}</span>
               </div>
             </div>
-
             <div className="playlist-view-actions">
-              <button
-                className="playlist-play-btn"
-                onClick={() => activePlaylistSongs.length > 0 && handlePlay(activePlaylistSongs[0])}
-                disabled={activePlaylistSongs.length === 0}
-                title={t("player.play")}
-              >▶</button>
-              <button
-                className="playlist-delete-btn"
-                onClick={() => handleDeletePlaylist(activePlaylist.id)}
-                title={t("home.delete")}
-              >🗑 {t("home.delete")}</button>
+              <button className="playlist-play-btn" onClick={() => activePlaylistSongs.length > 0 && handlePlay(activePlaylistSongs[0])} disabled={activePlaylistSongs.length === 0}>▶</button>
+              <button className="playlist-delete-btn" onClick={() => handleDeletePlaylist(activePlaylist.id)}>🗑 {t("home.delete")}</button>
             </div>
-
             {loadingPlaylistSongs ? (
               <p style={{ color: "#b3b3b3", padding: "20px" }}>{t("home.loading_songs")}</p>
             ) : activePlaylistSongs.length === 0 ? (
               <p style={{ color: "#b3b3b3", padding: "20px" }}>{t("home.no_playlist_songs")}</p>
             ) : (
               <table className="playlist-songs-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>{t("home.col_title")}</th>
-                    <th>{t("home.col_artist")}</th>
-                    <th></th>
-                  </tr>
-                </thead>
+                <thead><tr><th>#</th><th>{t("home.col_title")}</th><th>{t("home.col_artist")}</th><th></th></tr></thead>
                 <tbody>
                   {activePlaylistSongs.map((song, idx) => (
-                    <tr
-                      key={song.id}
-                      className={`playlist-song-row${currentSong?.id === song.id ? " playing" : ""}`}
-                    >
-                      <td className="song-num" onClick={() => handlePlay(song)}>
-                        {currentSong?.id === song.id
-                          ? <span className="playing-indicator">♫</span>
-                          : idx + 1
-                        }
-                      </td>
-                      <td className="song-title-cell" onClick={() => handlePlay(song)}>
-                        <img src={formatUrl(song.cover_url)} className="song-row-thumb" alt={song.title} />
-                        <span>{song.title}</span>
-                      </td>
-                      <td className="song-artist-cell" onClick={() => handlePlay(song)}>
-                        {song.artist}
-                      </td>
+                    <tr key={song.id} className={`playlist-song-row${currentSong?.id === song.id ? " playing" : ""}`}>
+                      <td className="song-num" onClick={() => handlePlay(song)}>{currentSong?.id === song.id ? <span className="playing-indicator">♫</span> : idx + 1}</td>
+                      <td className="song-title-cell" onClick={() => handlePlay(song)}><img src={formatUrl(song.cover_url)} className="song-row-thumb" alt={song.title} /><span>{song.title}</span></td>
+                      <td className="song-artist-cell" onClick={() => handlePlay(song)}>{song.artist}</td>
                       <td className="song-remove-cell">
-                        <button
-                          className="btn-remove-song"
-                          onClick={(e) => { e.stopPropagation(); handleRemoveSongFromPlaylist(song); }}
-                          title={t("home.remove_song")}
-                        >✕</button>
+                        <button className="btn-remove-song" onClick={(e) => { e.stopPropagation(); handleRemoveSongFromPlaylist(song); }}>✕</button>
                       </td>
                     </tr>
                   ))}
@@ -945,47 +690,103 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
           </div>
 
         ) : (
-          /* ===== VIEW: HOME (lista de músicas) ===== */
-          <div className="songs-row-container">
-            <h2>{search ? t("home.results") : t("home.top_songs")}</h2>
+          /* ===== VIEW: HOME ===== */
+          <div style={{ display: "flex", flexDirection: "column", gap: "40px" }}>
 
-            <div className="scroll-wrapper">
-              <button className="nav-arrow left" onClick={() => scrollRow("left")}>◀</button>
-              <button className="nav-arrow right" onClick={() => scrollRow("right")}>▶</button>
-
-              {isLoading && <p style={{ color: "#b3b3b3", padding: "20px 0" }}>{t("home.loading")}</p>}
-
-              {!isLoading && displayList.length === 0 && (
-                <p style={{ color: "#b3b3b3", padding: "20px 0" }}>
-                  {search ? t("home.no_results") : t("home.no_songs")}
-                </p>
-              )}
-
-              <div className="scroll-grid" ref={scrollRef}>
-                {displayList.map((song) => (
-                  <div
-                    key={song.id}
-                    className={`spotify-card${currentSong?.id === song.id ? " playing" : ""}`}
-                    onClick={() => handlePlay(song)}
-                  >
-                    <div className="img-container">
-                      <img src={formatUrl(song.cover_url)} alt={song.title} />
-                      {isLoggedIn && (
-                        <button
-                          className="btn-add-to-playlist"
-                          onClick={(e) => { e.stopPropagation(); setShowAddToPlaylist(song.id); }}
-                          title={t("home.add_to_playlist")}
-                        >+</button>
-                      )}
+            {/* ARTISTAS */}
+            <div className="songs-row-container">
+              <h2>🎤 Artistas</h2>
+              <div className="scroll-wrapper">
+                <button className="nav-arrow left" onClick={() => scrollRow("left", scrollArtistsRef)}>◀</button>
+                <button className="nav-arrow right" onClick={() => scrollRow("right", scrollArtistsRef)}>▶</button>
+                <div className="scroll-grid" ref={scrollArtistsRef}>
+                  {uniqueArtists.map((song) => (
+                    <div key={song.artist} className="spotify-card" style={{ textAlign: "center" }} onClick={() => setSearch(song.artist)}>
+                      <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: "50%", overflow: "hidden", border: "2px solid #00d2ff" }}>
+                        <img src={formatUrl(song.cover_url)} alt={song.artist} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                      </div>
+                      <div className="card-info" style={{ marginTop: 10 }}>
+                        <strong>{song.artist}</strong>
+                        <p>{songs.filter(s => s.artist === song.artist).length} música(s)</p>
+                      </div>
                     </div>
-                    <div className="card-info">
-                      <strong>{song.title}</strong>
-                      <p>{song.artist}</p>
-                    </div>
-                  </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* GÊNEROS */}
+            <div className="songs-row-container">
+              <h2>🎸 Gêneros</h2>
+              <div className="genre-chips">
+                <button className={`genre-chip${!search ? " active" : ""}`} onClick={() => setSearch("")}>
+                  Todos
+                </button>
+                {uniqueGenres.map(genre => (
+                  <button key={genre} className={`genre-chip${search === genre ? " active" : ""}`} onClick={() => setSearch(genre)}>
+                    {genre}
+                  </button>
                 ))}
               </div>
             </div>
+
+            {/* MAIS OUVIDAS */}
+            <div className="songs-row-container">
+              <h2>{search ? t("home.results") : t("home.top_songs")}</h2>
+              <div className="scroll-wrapper">
+                <button className="nav-arrow left" onClick={() => scrollRow("left", scrollRef)}>◀</button>
+                <button className="nav-arrow right" onClick={() => scrollRow("right", scrollRef)}>▶</button>
+                {isLoading && <p style={{ color: "#b3b3b3", padding: "20px 0" }}>{t("home.loading")}</p>}
+                {!isLoading && displayList.length === 0 && (
+                  <p style={{ color: "#b3b3b3", padding: "20px 0" }}>{search ? t("home.no_results") : t("home.no_songs")}</p>
+                )}
+                <div className="scroll-grid" ref={scrollRef}>
+                  {displayList.map((song) => <SongCard key={song.id} song={song} />)}
+                </div>
+              </div>
+            </div>
+
+            {/* RECÉM ADICIONADAS */}
+            {!search && (
+              <div className="songs-row-container">
+                <h2>🆕 Recém Adicionadas</h2>
+                <div className="scroll-wrapper">
+                  <button className="nav-arrow left" onClick={() => scrollRow("left", scrollRecentRef)}>◀</button>
+                  <button className="nav-arrow right" onClick={() => scrollRow("right", scrollRecentRef)}>▶</button>
+                  <div className="scroll-grid" ref={scrollRecentRef}>
+                    {recentSongs.map((song) => <SongCard key={song.id} song={song} />)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* PLAYLISTS */}
+            {isLoggedIn && playlists.length > 0 && !search && (
+              <div className="songs-row-container">
+                <h2>📂 {t("home.playlists")}</h2>
+                <div className="scroll-wrapper">
+                  <button className="nav-arrow left" onClick={() => scrollRow("left", scrollPlaylistsRef)}>◀</button>
+                  <button className="nav-arrow right" onClick={() => scrollRow("right", scrollPlaylistsRef)}>▶</button>
+                  <div className="scroll-grid" ref={scrollPlaylistsRef}>
+                    {playlists.map((pl) => (
+                      <div key={pl.id} className={`spotify-card${activePlaylist?.id === pl.id ? " playing" : ""}`} onClick={() => openPlaylist(pl)}>
+                        <div className="img-container">
+                          {pl.cover_url
+                            ? <img src={formatUrl(pl.cover_url)} alt={pl.name} />
+                            : <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #6200ff, #00d2ff)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48 }}>🎵</div>
+                          }
+                        </div>
+                        <div className="card-info">
+                          <strong>{pl.name}</strong>
+                          <p>Playlist</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
           </div>
         )}
       </main>
@@ -994,44 +795,18 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
       <aside className="sidebar-right">
         {currentSong && (
           <div className="song-details">
-            <img
-              src={formatUrl(currentSong.cover_url)}
-              className="current-art"
-              alt={currentSong.title}
-            />
+            <img src={formatUrl(currentSong.cover_url)} className="current-art" alt={currentSong.title} />
             <div className="song-actions">
-              <button className="action-pill">
-                ▶ {currentSong.play_count ?? 0}
-              </button>
-              <button
-                className="action-pill"
-                onClick={() => requireLogin(handleLikeSong)}
-                title={isLoggedIn ? t("home.like") : t("home.login_to_like")}
-              >
-                👍 {currentSong.like_count ?? 0}
-              </button>
-              <button
-                className="action-pill"
-                onClick={() => requireLogin(openCommentsModal)}
-                title={isLoggedIn ? t("home.comments") : t("home.login_to_comment")}
-              >
-                💬 {currentSong.comment_count ?? 0}
-              </button>
-              <button
-                className="action-pill"
-                onClick={() => requireLogin(handleDownloadSong)}
-                title={isLoggedIn ? t("home.download") : t("home.login_to_download")}
-              >
-                ⬇
-              </button>
+              <button className="action-pill">▶ {currentSong.play_count ?? 0}</button>
+              <button className="action-pill" onClick={() => requireLogin(handleLikeSong)}>👍 {currentSong.like_count ?? 0}</button>
+              <button className="action-pill" onClick={() => requireLogin(openCommentsModal)}>💬 {currentSong.comment_count ?? 0}</button>
+              <button className="action-pill" onClick={() => requireLogin(handleDownloadSong)}>⬇</button>
             </div>
             <h2>{currentSong.title}</h2>
             <p>{currentSong.artist}</p>
             <p style={{ color: "#aaa" }}>{currentSong.genre}</p>
             {currentSong.lyrics && (
-              <div className="lyrics-box">
-                <pre>{currentSong.lyrics}</pre>
-              </div>
+              <div className="lyrics-box"><pre>{currentSong.lyrics}</pre></div>
             )}
           </div>
         )}
@@ -1040,40 +815,23 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
       {/* PLAYER */}
       {currentSong && (
         <footer className="player-bar-spotify">
-          <audio
-            ref={audioRef}
-            key={currentSong.id}
-            src={formatUrl(currentSong.audio_url)}
-            autoPlay
-            onTimeUpdate={handleTimeUpdate}
-            onLoadedMetadata={onLoadedMetadata}
-            onEnded={handleEnded}
-          />
+          <audio ref={audioRef} key={currentSong.id} src={formatUrl(currentSong.audio_url)} autoPlay onTimeUpdate={handleTimeUpdate} onLoadedMetadata={onLoadedMetadata} onEnded={handleEnded} />
           <div className="player-info">
             <strong>{currentSong.title}</strong>
             <p>{currentSong.artist}</p>
           </div>
           <div className="player-controls-spotify">
             <div className="control-buttons">
-              <button className="btn-icon" onClick={() => setIsShuffle(!isShuffle)}
-                style={{ color: isShuffle ? "#00d2ff" : undefined }} title={t("player.shuffle")}>🔀</button>
-              <button className="btn-icon" onClick={playPrev} title={t("player.previous")}>⏮</button>
-              <button
-                className="btn-main-play"
-                onClick={togglePlay}
-                style={{ paddingLeft: isPlaying ? '0' : '3px' }}
-              >
-                {isPlaying ? "⏸" : "▶"}
-              </button>
-              <button className="btn-icon" onClick={playNext} title={t("player.next")}>⏭</button>
-              <button className="btn-icon" onClick={() => setIsRepeat(!isRepeat)}
-                style={{ color: isRepeat ? "#00d2ff" : undefined }} title={t("player.repeat")}>🔁</button>
+              <button className="btn-icon" onClick={() => setIsShuffle(!isShuffle)} style={{ color: isShuffle ? "#00d2ff" : undefined }}>🔀</button>
+              <button className="btn-icon" onClick={playPrev}>⏮</button>
+              <button className="btn-main-play" onClick={togglePlay} style={{ paddingLeft: isPlaying ? '0' : '3px' }}>{isPlaying ? "⏸" : "▶"}</button>
+              <button className="btn-icon" onClick={playNext}>⏭</button>
+              <button className="btn-icon" onClick={() => setIsRepeat(!isRepeat)} style={{ color: isRepeat ? "#00d2ff" : undefined }}>🔁</button>
             </div>
             <div className="progress-container-wrapper">
               <span className="time-text">{currentTime}</span>
               <div className="progress-bg">
-                <input type="range" className="progress-slider" min="0" max="100"
-                  value={progress} onChange={handleSeek} />
+                <input type="range" className="progress-slider" min="0" max="100" value={progress} onChange={handleSeek} />
                 <div className="progress-fill" style={{ width: `${progress}%` }} />
               </div>
               <span className="time-text">{duration}</span>
@@ -1082,14 +840,12 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
           <div className="player-right">
             <div className="volume-wrapper">
               <span>{volume === 0 ? "🔇" : "🔊"}</span>
-              <input type="range" min="0" max="1" step="0.01" value={volume}
-                onChange={handleVolumeChange} className="volume-slider" />
+              <input type="range" min="0" max="1" step="0.01" value={volume} onChange={handleVolumeChange} className="volume-slider" />
             </div>
           </div>
         </footer>
       )}
 
-      {/* TOAST */}
       {feedbackMsg && <div className="toast-feedback">{feedbackMsg}</div>}
 
       {/* MODAL: CRIAR PLAYLIST */}
@@ -1100,24 +856,14 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
             <div className="cover-upload-area" onClick={() => coverInputRef.current?.click()}>
               {newPlaylistCoverPreview
                 ? <img src={newPlaylistCoverPreview} className="cover-preview" alt="Capa" />
-                : <div className="cover-placeholder">
-                    <span className="cover-icon">🖼️</span>
-                    <span className="cover-label">{t("home.add_cover")}</span>
-                  </div>
+                : <div className="cover-placeholder"><span className="cover-icon">🖼️</span><span className="cover-label">{t("home.add_cover")}</span></div>
               }
               {newPlaylistCoverPreview && (
                 <button className="cover-remove" onClick={(e) => { e.stopPropagation(); setNewPlaylistCover(null); setNewPlaylistCoverPreview(null); }}>✕</button>
               )}
             </div>
             <input ref={coverInputRef} type="file" accept="image/*" style={{ display: "none" }} onChange={handleCoverChange} />
-            <input
-              type="text"
-              placeholder={t("home.playlist_name")}
-              value={newPlaylistName}
-              onChange={(e) => setNewPlaylistName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCreatePlaylist()}
-              autoFocus
-            />
+            <input type="text" placeholder={t("home.playlist_name")} value={newPlaylistName} onChange={(e) => setNewPlaylistName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleCreatePlaylist()} autoFocus />
             <div className="modal-actions">
               <button onClick={closeCreateModal}>{t("home.cancel")}</button>
               <button className="btn-confirm" onClick={handleCreatePlaylist} disabled={!newPlaylistName.trim()}>{t("home.create")}</button>
@@ -1134,12 +880,8 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
             {playlists.length === 0
               ? <p style={{ color: "#b3b3b3" }}>{t("home.no_playlists_created")}</p>
               : playlists.map((pl) => (
-                <div key={pl.id} className="playlist-option"
-                  onClick={() => handleAddToPlaylist(pl.id, showAddToPlaylist)}>
-                  {pl.cover_url
-                    ? <img src={formatUrl(pl.cover_url)} className="playlist-option-thumb" alt={pl.name} />
-                    : <span>🎵</span>
-                  }
+                <div key={pl.id} className="playlist-option" onClick={() => handleAddToPlaylist(pl.id, showAddToPlaylist)}>
+                  {pl.cover_url ? <img src={formatUrl(pl.cover_url)} className="playlist-option-thumb" alt={pl.name} /> : <span>🎵</span>}
                   {pl.name}
                 </div>
               ))
@@ -1156,42 +898,28 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
         <div className="modal-overlay" onClick={() => setShowCommentsModal(false)}>
           <div className="modal-box" onClick={(e) => e.stopPropagation()}>
             <h3>{t("home.comments")}</h3>
-            {comments.length === 0 ? (
-              <p>{t("home.no_comments")}</p>
-            ) : (
-              comments.map((c) => (
-                <div key={c.id} className="comment-item">
-                  <strong>{c.username}</strong>
-                  <p>{c.content}</p>
-                </div>
-              ))
-            )}
-            <input
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleSendComment()}
-              placeholder={t("home.comment_placeholder")}
-            />
+            {comments.length === 0 ? <p>{t("home.no_comments")}</p> : comments.map((c) => (
+              <div key={c.id} className="comment-item">
+                <strong>{c.username}</strong>
+                <p>{c.content}</p>
+              </div>
+            ))}
+            <input value={newComment} onChange={(e) => setNewComment(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSendComment()} placeholder={t("home.comment_placeholder")} />
             <button onClick={handleSendComment}>{t("home.send")}</button>
             <button onClick={() => setShowCommentsModal(false)}>{t("home.close")}</button>
           </div>
         </div>
       )}
 
-      {/* PAINEL: PERFIL */}
       {showProfile && isLoggedIn && (
         <ProfilePanel
           onClose={() => setShowProfile(false)}
           formatUrl={formatUrl}
           getAuthHeaders={getAuthHeaders}
-          onPlaySong={(song) => {
-            handlePlay(song as unknown as Song);
-            setShowProfile(false);
-          }}
+          onPlaySong={(song) => { handlePlay(song as unknown as Song); setShowProfile(false); }}
         />
       )}
 
-      {/* PAINEL: CONFIGURAÇÕES */}
       {showSettings && isLoggedIn && (
         <SettingsPanel
           onClose={() => setShowSettings(false)}
