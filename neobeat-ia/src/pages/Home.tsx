@@ -20,12 +20,13 @@ export const useI18n = () => {
 };
 
 interface Song {
-  id: number;
+  id: string;
   title: string;
   artist: string;
   genre: string;
   cover_url: string;
   audio_url: string;
+  created_at?: string;
   lyrics?: string;
   like_count?: number;
   comment_count?: number;
@@ -71,7 +72,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const scrollArtistsRef = useRef<HTMLDivElement>(null);
-  const scrollPlaylistsRef = useRef<HTMLDivElement>(null);
+  const scrollPublicPlaylistsRef = useRef<HTMLDivElement>(null);
   const scrollRecentRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
@@ -85,11 +86,12 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
   const [isRepeat, setIsRepeat] = useState(false);
 
   const [playlists, setPlaylists] = useState<Playlist[]>([]);
+  const [publicPlaylists, setPublicPlaylists] = useState<Playlist[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newPlaylistName, setNewPlaylistName] = useState("");
   const [newPlaylistCover, setNewPlaylistCover] = useState<File | null>(null);
   const [newPlaylistCoverPreview, setNewPlaylistCoverPreview] = useState<string | null>(null);
-  const [showAddToPlaylist, setShowAddToPlaylist] = useState<number | null>(null);
+  const [showAddToPlaylist, setShowAddToPlaylist] = useState<string | null>(null);
   const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
 
   const [activePlaylist, setActivePlaylist] = useState<Playlist | null>(null);
@@ -266,14 +268,16 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const [resSongs, resTop] = await Promise.all([
+        const [resSongs, resTop, resPublicPlaylists] = await Promise.all([
           fetch("/api/songs"),
           fetch("/api/rankings/top-songs"),
+          fetch("/api/playlists/public", { headers: getAuthHeaders() }),
         ]);
         const songsData = await resSongs.json();
         setSongs(songsData || []);
         setFilteredSongs(songsData || []);
         if (resTop.ok) setTopSongs((await resTop.json()) || []);
+        if (resPublicPlaylists.ok) setPublicPlaylists((await resPublicPlaylists.json()) || []);
         if (isLoggedIn) {
           const [resPlaylists, resLiked] = await Promise.all([
             fetch("/api/playlists", { headers: getAuthHeaders() }),
@@ -402,7 +406,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
     }
   };
 
-  const handleAddToPlaylist = async (playlistId: string, songId: number) => {
+  const handleAddToPlaylist = async (playlistId: string, songId: string) => {
     try {
       const res = await fetch(`/api/playlists/${playlistId}/songs`, { method: "POST", headers: getAuthHeaders(), body: JSON.stringify({ song_id: songId }) });
       const data = await res.json();
@@ -428,7 +432,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
     target?.scrollBy({ left: dir === "right" ? 300 : -300, behavior: "smooth" });
   };
 
-  const loadComments = async (songId: number) => {
+  const loadComments = async (songId: string) => {
     try {
       const res = await fetch(`/api/songs/${songId}/comments`);
       const data = await res.json();
@@ -532,13 +536,28 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
 
   const displayList = getDisplayList();
 
-  // Fix TypeScript: usar forEach ao invés de Map constructor
   const artistMap = new Map<string, Song>();
   songs.forEach(s => { if (!artistMap.has(s.artist)) artistMap.set(s.artist, s); });
   const uniqueArtists: Song[] = [...artistMap.values()];
 
   const uniqueGenres: string[] = [...new Set(songs.map(s => s.genre).filter((g): g is string => Boolean(g)))];
-  const recentSongs = [...songs].reverse().slice(0, 10);
+
+  const songsByNewest = [...songs].sort((a, b) => {
+    const dateA = a.created_at ? new Date(a.created_at).getTime() : 0;
+    const dateB = b.created_at ? new Date(b.created_at).getTime() : 0;
+    return dateB - dateA;
+  });
+  const THIRTY_DAYS_MS = 30 * 24 * 60 * 60 * 1000;
+  const now = Date.now();
+  const last30DaysSongs = songsByNewest.filter((s) => {
+    if (!s.created_at) return false;
+    return now - new Date(s.created_at).getTime() <= THIRTY_DAYS_MS;
+  });
+  const recentSongs = (last30DaysSongs.length > 0 ? last30DaysSongs : songsByNewest).slice(0, 10);
+
+  // Extraído para evitar inferência "never" dentro de condicional aninhada
+  const publicPlaylistsTyped: Playlist[] = publicPlaylists;
+  const activePlaylistId: string | null = activePlaylist?.id ?? null;
 
   return (
     <div className="spotify-layout">
@@ -664,7 +683,9 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
             </div>
             <div className="playlist-view-actions">
               <button className="playlist-play-btn" onClick={() => activePlaylistSongs.length > 0 && handlePlay(activePlaylistSongs[0])} disabled={activePlaylistSongs.length === 0}>▶</button>
-              <button className="playlist-delete-btn" onClick={() => handleDeletePlaylist(activePlaylist.id)}>🗑 {t("home.delete")}</button>
+              {isLoggedIn && playlists.some((p: Playlist) => p.id === activePlaylist.id) && (
+                <button className="playlist-delete-btn" onClick={() => handleDeletePlaylist(activePlaylist.id)}>🗑 {t("home.delete")}</button>
+              )}
             </div>
             {loadingPlaylistSongs ? (
               <p style={{ color: "#b3b3b3", padding: "20px" }}>{t("home.loading_songs")}</p>
@@ -680,7 +701,9 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
                       <td className="song-title-cell" onClick={() => handlePlay(song)}><img src={formatUrl(song.cover_url)} className="song-row-thumb" alt={song.title} /><span>{song.title}</span></td>
                       <td className="song-artist-cell" onClick={() => handlePlay(song)}>{song.artist}</td>
                       <td className="song-remove-cell">
-                        <button className="btn-remove-song" onClick={(e) => { e.stopPropagation(); handleRemoveSongFromPlaylist(song); }}>✕</button>
+                        {isLoggedIn && playlists.some((p: Playlist) => p.id === activePlaylist.id) && (
+                          <button className="btn-remove-song" onClick={(e) => { e.stopPropagation(); handleRemoveSongFromPlaylist(song); }}>✕</button>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -695,14 +718,14 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
 
             {/* ARTISTAS */}
             <div className="songs-row-container">
-              <h2>🎤 Artistas</h2>
+              <h2>🎤 {t("home.artists")}</h2>
               <div className="scroll-wrapper">
                 <button className="nav-arrow left" onClick={() => scrollRow("left", scrollArtistsRef)}>◀</button>
                 <button className="nav-arrow right" onClick={() => scrollRow("right", scrollArtistsRef)}>▶</button>
                 <div className="scroll-grid" ref={scrollArtistsRef}>
                   {uniqueArtists.map((song) => (
                     <div key={song.artist} className="spotify-card" style={{ textAlign: "center" }} onClick={() => setSearch(song.artist)}>
-                      <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: "50%", overflow: "hidden", border: "2px solid #00d2ff" }}>
+                      <div style={{ width: "100%", aspectRatio: "1/1", borderRadius: "50%", overflow: "hidden", border: "2px solid #700061" }}>
                         <img src={formatUrl(song.cover_url)} alt={song.artist} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
                       </div>
                       <div className="card-info" style={{ marginTop: 10 }}>
@@ -717,10 +740,10 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
 
             {/* GÊNEROS */}
             <div className="songs-row-container">
-              <h2>🎸 Gêneros</h2>
+              <h2>🎸 {t("home.genres")}</h2>
               <div className="genre-chips">
                 <button className={`genre-chip${!search ? " active" : ""}`} onClick={() => setSearch("")}>
-                  Todos
+                  {t("home.all")}
                 </button>
                 {uniqueGenres.map(genre => (
                   <button key={genre} className={`genre-chip${search === genre ? " active" : ""}`} onClick={() => setSearch(genre)}>
@@ -749,7 +772,7 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
             {/* RECÉM ADICIONADAS */}
             {!search && (
               <div className="songs-row-container">
-                <h2>🆕 Recém Adicionadas</h2>
+                <h2>🆕 {t("home.recently_added")}</h2>
                 <div className="scroll-wrapper">
                   <button className="nav-arrow left" onClick={() => scrollRow("left", scrollRecentRef)}>◀</button>
                   <button className="nav-arrow right" onClick={() => scrollRow("right", scrollRecentRef)}>▶</button>
@@ -760,28 +783,31 @@ const Home: React.FC<HomeProps> = ({ goToLogin, goToRegister }) => {
               </div>
             )}
 
-            {/* PLAYLISTS */}
-            {isLoggedIn && playlists.length > 0 && !search && (
+            {/* PLAYLISTS DE OUTROS USUÁRIOS (COMUNIDADE) */}
+            {publicPlaylistsTyped.length > 0 && !search && (
               <div className="songs-row-container">
-                <h2>📂 {t("home.playlists")}</h2>
+                <h2>🌎 {t("home.community_playlists")}</h2>
                 <div className="scroll-wrapper">
-                  <button className="nav-arrow left" onClick={() => scrollRow("left", scrollPlaylistsRef)}>◀</button>
-                  <button className="nav-arrow right" onClick={() => scrollRow("right", scrollPlaylistsRef)}>▶</button>
-                  <div className="scroll-grid" ref={scrollPlaylistsRef}>
-                    {playlists.map((pl) => (
-                      <div key={pl.id} className={`spotify-card${activePlaylist?.id === pl.id ? " playing" : ""}`} onClick={() => openPlaylist(pl)}>
-                        <div className="img-container">
-                          {pl.cover_url
-                            ? <img src={formatUrl(pl.cover_url)} alt={pl.name} />
-                            : <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #6200ff, #00d2ff)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48 }}>🎵</div>
-                          }
+                  <button className="nav-arrow left" onClick={() => scrollRow("left", scrollPublicPlaylistsRef)}>◀</button>
+                  <button className="nav-arrow right" onClick={() => scrollRow("right", scrollPublicPlaylistsRef)}>▶</button>
+                  <div className="scroll-grid" ref={scrollPublicPlaylistsRef}>
+                    {publicPlaylistsTyped.map((pl: Playlist) => {
+                      const isActive = activePlaylistId === pl.id;
+                      return (
+                        <div key={pl.id} className={`spotify-card${isActive ? " playing" : ""}`} onClick={() => openPlaylist(pl)}>
+                          <div className="img-container">
+                            {pl.cover_url
+                              ? <img src={formatUrl(pl.cover_url)} alt={pl.name} />
+                              : <div style={{ width: "100%", height: "100%", background: "linear-gradient(135deg, #6200ff, #00d2ff)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48 }}>🎵</div>
+                            }
+                          </div>
+                          <div className="card-info">
+                            <strong>{pl.name}</strong>
+                            <p>Playlist</p>
+                          </div>
                         </div>
-                        <div className="card-info">
-                          <strong>{pl.name}</strong>
-                          <p>Playlist</p>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               </div>

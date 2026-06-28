@@ -93,6 +93,12 @@
     "login_to_download": "Log in to download",
     "download_error": "Error downloading song.",
     "liked_songs": "Liked Songs",
-    "no_liked_songs": "No liked songs yet. Click 👍 to start!"
+    "no_liked_songs": "No liked songs yet. Click 👍 to start!",
+    "recently_added": "Recently Added",
+    "community_playlists": "Community Playlists",
+    "genres": "Genres",
+    "artists": "Artists",
+    "all": "All",
+    "no_playlist_songs": "No songs in this playlist"
   }
 }

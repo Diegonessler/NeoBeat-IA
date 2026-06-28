@@ -93,6 +93,13 @@
     "login_to_download": "Inicia sesión para descargar",
     "download_error": "Error al descargar la canción.",
     "liked_songs": "Canciones que me gustan",
-    "no_liked_songs": "Ninguna canción aún. ¡Haz clic en 👍 para empezar!"
+    "no_liked_songs": "Ninguna canción aún. ¡Haz clic en 👍 para empezar!",
+    "recently_added": "Recién Agregadas",
+    "community_playlists": "Playlists de la Comunidad",
+    "genres": "Géneros",
+    "artists": "Artists",
+    "all": "Todos",
+    "no_playlist_songs": "No hay canciones en esta playlist"
+
   }
 }

@@ -30,6 +30,20 @@ const getUserId = async (req) => {
 };
 
 /* ============================================================
+   HELPER — extrai user_id do token JWT SEM exigir login
+   (usado por rotas públicas, como /public, que precisam saber
+   quem é o usuário logado só para poder EXCLUIR a própria
+   playlist do resultado, mas funcionam mesmo sem token)
+   ============================================================ */
+const getUserIdOptional = async (req) => {
+  try {
+    return await getUserId(req);
+  } catch {
+    return null;
+  }
+};
+
+/* ============================================================
    GET /api/playlists
    ============================================================ */
 router.get("/", async (req, res) => {
@@ -46,6 +60,41 @@ router.get("/", async (req, res) => {
     if (error) {
       console.error("Erro ao buscar playlists:", error.message);
       return res.status(500).json({ error: "Erro ao buscar playlists" });
+    }
+
+    return res.status(200).json(data || []);
+  } catch (err) {
+    console.error("Erro inesperado:", err);
+    return res.status(500).json({ error: "Erro interno no servidor" });
+  }
+});
+
+/* ============================================================
+   GET /api/playlists/public
+   Retorna as playlists de TODOS os usuários (não exige login).
+   Se o usuário estiver logado, a própria playlist é excluída
+   da lista, já que ela já aparece em "Suas Playlists".
+   IMPORTANTE: precisa vir ANTES de qualquer rota "/:id",
+   senão o Express tenta tratar "public" como um id de playlist.
+   ============================================================ */
+router.get("/public", async (req, res) => {
+  try {
+    const user_id = await getUserIdOptional(req);
+
+    let query = supabase
+      .from("playlist")
+      .select("*")
+      .order("created_at", { ascending: false });
+
+    if (user_id) {
+      query = query.neq("user_id", user_id);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("Erro ao buscar playlists públicas:", error.message);
+      return res.status(500).json({ error: "Erro ao buscar playlists públicas" });
     }
 
     return res.status(200).json(data || []);
@@ -138,23 +187,23 @@ router.get("/liked", async (req, res) => {
 
 /* ============================================================
    GET /api/playlists/:id/songs
+   Qualquer pessoa pode VER as músicas de qualquer playlist
+   (inclusive sem login), já que isso só é leitura.
+   Editar/remover músicas continua exigindo ser o dono — isso é
+   checado nas rotas POST e DELETE abaixo, que não foram alteradas.
    ============================================================ */
 router.get("/:id/songs", async (req, res) => {
   try {
-    const user_id = await getUserId(req);
-    if (!user_id) return res.status(401).json({ error: "Não autorizado" });
-
     const { id: playlist_id } = req.params;
 
     const { data: playlist, error: playlistError } = await supabase
       .from("playlist")
       .select("id")
       .eq("id", playlist_id)
-      .eq("user_id", user_id)
       .single();
 
     if (playlistError || !playlist) {
-      return res.status(403).json({ error: "Playlist não encontrada ou sem permissão" });
+      return res.status(404).json({ error: "Playlist não encontrada" });
     }
 
     const { data, error } = await supabase

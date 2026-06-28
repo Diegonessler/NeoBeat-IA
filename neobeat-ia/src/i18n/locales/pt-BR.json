@@ -92,7 +92,13 @@
     "download": "Baixar",
     "login_to_download": "Faça login para baixar",
     "download_error": "Erro ao baixar música.",
-    "Liked_songs": "Músicas Curtidas",
-    "no_liked_songs": "Nenhuma música curtida ainda. Clique em 👍 para começar!"
+    "liked_songs": "Músicas Curtidas",
+    "no_liked_songs": "Nenhuma música curtida ainda. Clique em 👍 para começar!",
+    "recently_added": "Recém Adicionadas",
+    "community_playlists": "Playlists da Comunidade",
+    "genres": "Gêneros",
+    "artists": "Artistas",
+    "all": "Todos",
+    "no_playlist_songs": "Nenhuma música nesta playlist"
   }
 }

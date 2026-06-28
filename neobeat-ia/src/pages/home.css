@@ -50,7 +50,7 @@ body {
 .top-bar-left {
   font-weight: 800;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #6200ff, #00d2ff);
+  background: linear-gradient(135deg, #ff00ea, #00d2ff);
   -webkit-background-clip: text;
   background-clip: text;
   color: transparent;
@@ -107,10 +107,10 @@ body {
 }
 
 .top-bar-right button:hover {
-  background: linear-gradient(135deg, #6200ff, #00d2ff);
+  background: linear-gradient(135deg, #44004b, #00d2ff);
   color: #fff;
   transform: translateY(-1px);
-  box-shadow: 0 4px 14px rgba(0, 210, 255, 0.3);
+  box-shadow: 0 4px 14px rgba(255, 255, 255, 0.3);
 }
 
 /* ============================================================
@@ -1069,21 +1069,33 @@ body {
   color: var(--text-secondary);
 }
 
+/* ============================================================
+   AÇÕES DA MÚSICA (sidebar direita) — ▶ / 👍 / 💬 / ⬇
+   ============================================================ */
 .song-actions {
   display: flex;
-  justify-content: center;
+  flex-direction: row;
   flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
   gap: 8px;
   margin: 16px 0;
+  width: 100%;
 }
 
 .action-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: auto;
   background: var(--bg-card);
   border: 1px solid var(--border-color);
   color: var(--text-main);
   padding: 7px 13px;
   border-radius: 20px;
   font-size: 13px;
+  white-space: nowrap;
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -1152,69 +1164,42 @@ body {
   --border-color: #e4e4ec;
 }
 
-/* Gêneros */
-.genre-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  padding-bottom: 8px;
-}
-
-.genre-chip {
-  padding: 8px 20px;
-  border-radius: 20px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-card);
-  color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-}
-
-.genre-chip:hover {
-  border-color: #00d2ff;
-  color: #00d2ff;
-}
-
-.genre-chip.active {
-  background: linear-gradient(135deg, #6200ff, #00d2ff);
-  color: #fff;
-  border-color: transparent;
-  box-shadow: 0 4px 14px rgba(0, 210, 255, 0.35);
-}
-
 /* ============================================================
    GÊNEROS — chips
    ============================================================ */
 .genre-chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  align-items: flex-start;
+  gap: 8px;
   padding-bottom: 8px;
 }
 
 .genre-chip {
-  padding: 8px 20px;
-  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: auto;
+  padding: 6px 16px;
+  border-radius: 16px;
   border: 1px solid var(--border-color);
   background: var(--bg-card);
   color: var(--text-secondary);
-  font-size: 13px;
-  font-weight: 600;
+  font-size: 12px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   white-space: nowrap;
 }
 
 .genre-chip:hover {
-  border-color: #00d2ff;
-  color: #00d2ff;
+  border-color: #64023f;
+  color: #ff0080;
 }
 
 .genre-chip.active {
-  background: linear-gradient(135deg, #6200ff, #00d2ff);
+  background: linear-gradient(135deg, #b700ff, #00d2ff);
   color: #fff;
   border-color: transparent;
   box-shadow: 0 4px 14px rgba(0, 210, 255, 0.35);
